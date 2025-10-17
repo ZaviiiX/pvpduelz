@@ -1,7 +1,94 @@
 // components/ArenaFrame.jsx
 import React, { useRef, useState, useEffect, useCallback } from "react";
+import io from "socket.io-client";
 
 const cls = (...c) => c.filter(Boolean).join(" ");
+
+// 💚 HEALTH BAR COMPONENT (Street Fighter style)
+function HealthBar({ health, maxHealth = 100, side = "left", label = "PLAYER", lastDamage = 0 }) {
+  const healthPercent = (health / maxHealth) * 100;
+  const isLowHealth = healthPercent < 30;
+  const isCritical = healthPercent < 15;
+  const isRecentDamage = Date.now() - lastDamage < 300;
+
+  // Health bar color based on percentage
+  const getHealthColor = () => {
+    if (healthPercent > 60) return 'bg-green-500';
+    if (healthPercent > 30) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  return (
+      <div className="pixel-font">
+        {/* Player Label */}
+        <div className={cls(
+            "text-[10px] text-white mb-1 tracking-wider",
+            side === "left" ? "text-left" : "text-right"
+        )}>
+          {label}
+        </div>
+
+        {/* Health Bar Container */}
+        <div className={cls(
+            "relative bg-black border-4 border-gray-700 p-1",
+            isRecentDamage && "animate-pulse"
+        )} style={{
+          width: '300px',
+          height: '32px',
+          boxShadow: '4px 4px 0 rgba(0,0,0,0.5)',
+          imageRendering: 'pixelated'
+        }}>
+          {/* Background grid */}
+          <div className="absolute inset-1 opacity-20" style={{
+            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)',
+          }} />
+
+          {/* Damage flash overlay */}
+          {isRecentDamage && (
+              <div className="absolute inset-0 bg-red-500 opacity-60 animate-ping" style={{ animationDuration: '0.3s' }} />
+          )}
+
+          {/* Health Bar Fill */}
+          <div
+              className={cls(
+                  "relative h-full transition-all duration-300",
+                  getHealthColor(),
+                  isCritical && "animate-pulse"
+              )}
+              style={{
+                width: `${healthPercent}%`,
+                boxShadow: isLowHealth ? '0 0 10px currentColor' : 'none',
+                imageRendering: 'pixelated'
+              }}
+          >
+            {/* Shine effect */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-black/20" />
+
+            {/* Segments */}
+            <div className="absolute inset-0" style={{
+              backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(0,0,0,0.2) 8px, rgba(0,0,0,0.2) 10px)',
+            }} />
+          </div>
+
+          {/* Health percentage text */}
+          <div className={cls(
+              "absolute inset-0 flex items-center justify-center text-white text-[12px] font-black",
+              "drop-shadow-[2px_2px_0_rgba(0,0,0,1)]",
+              isCritical && "animate-pulse"
+          )} style={{ textShadow: '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>
+            {Math.round(health)}
+          </div>
+
+          {/* Critical warning */}
+          {isCritical && (
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[8px] text-red-500 font-black animate-bounce">
+                ⚠️ DANGER
+              </div>
+          )}
+        </div>
+      </div>
+  );
+}
 
 function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinning = false, isLosing = false, marketChange = 0 }) {
   // Calculate intensity based on market change
@@ -235,6 +322,9 @@ export default function ArenaFrame({
                                      arenaFit = "cover",
                                      arenaOpacity = 1,
                                      fullHeight = true,
+                                     testingMode = true, // 🧪 SET TO FALSE FOR PRODUCTION
+                                     syncMode = true, // 🔄 FULL SYNC MODE
+                                     serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3001",// 🌐 WebSocket server URL
                                      videos = {
                                        idle: "/videos/solana-vs-bnb.mp4",
                                        solPump: "/videos/sol-winning.mp4",
@@ -267,7 +357,112 @@ export default function ArenaFrame({
     bnb: { price: 0, change24h: 0 },
   });
 
+  // 💚 HEALTH SYSTEM
+  const [health, setHealth] = useState({
+    sol: 100,
+    bnb: 100,
+  });
+  const [lastDamage, setLastDamage] = useState({
+    sol: 0,
+    bnb: 0,
+  });
+
+  // 🌐 WEBSOCKET STATE
+  const socketRef = useRef(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [userCount, setUserCount] = useState(0);
+  const [serverTime, setServerTime] = useState(0);
+
   const currentVideoSrc = videos[currentScenario] || videos.idle;
+
+  // 🌐 WEBSOCKET CONNECTION (FULL SYNC MODE)
+  useEffect(() => {
+    if (!syncMode) return;
+
+    console.log('🔌 Connecting to server:', serverUrl);
+    const socket = io(serverUrl, {
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10
+    });
+
+    socketRef.current = socket;
+
+    // ✅ Connected
+    socket.on('connect', () => {
+      console.log('✅ Connected to Arena Server');
+      setIsConnected(true);
+    });
+
+    // ❌ Disconnected
+    socket.on('disconnect', () => {
+      console.log('❌ Disconnected from Arena Server');
+      setIsConnected(false);
+    });
+
+    // 📦 Initial state when joining
+    socket.on('initial_state', (state) => {
+      console.log('📦 Received initial state:', state);
+      setCurrentScenario(state.currentScenario);
+      setHealth(state.health);
+      setMarketData(state.marketData);
+      setLastDamage(state.lastDamage);
+      setPendingScenario(state.pendingScenario);
+      setIsTransitioning(state.isTransitioning);
+      setServerTime(state.videoTime);
+
+      // Sync video to current time
+      if (videoRef.current && state.videoTime > 0) {
+        videoRef.current.currentTime = state.videoTime;
+      }
+    });
+
+    // 🔄 State updates (health, market data)
+    socket.on('state_update', (update) => {
+      console.log('🔄 State update:', update);
+      if (update.health) setHealth(update.health);
+      if (update.marketData) setMarketData(update.marketData);
+      if (update.lastDamage) setLastDamage(update.lastDamage);
+      if (update.pendingScenario !== undefined) setPendingScenario(update.pendingScenario);
+      if (update.isTransitioning !== undefined) setIsTransitioning(update.isTransitioning);
+    });
+
+    // 🎬 Scenario change
+    socket.on('scenario_change', ({ scenario, timestamp }) => {
+      console.log('🎬 Scenario change:', scenario);
+      setCurrentScenario(scenario);
+      setServerTime(0);
+
+      // Reset video to start
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0;
+        videoRef.current.play().catch(err => console.error('Video play error:', err));
+      }
+    });
+
+    // 🎥 Video sync (every second from server)
+    socket.on('video_sync', ({ scenario, time }) => {
+      setServerTime(time);
+
+      // Sync video if drift is too large (>2 seconds)
+      if (videoRef.current && Math.abs(videoRef.current.currentTime - time) > 2) {
+        console.log(`⏰ Syncing video: ${videoRef.current.currentTime.toFixed(1)}s → ${time.toFixed(1)}s`);
+        videoRef.current.currentTime = time;
+      }
+    });
+
+    // 👥 User count
+    socket.on('user_count', (count) => {
+      setUserCount(count);
+    });
+
+    // Cleanup
+    return () => {
+      console.log('🔌 Disconnecting from server');
+      socket.disconnect();
+    };
+  }, [syncMode, serverUrl]);
 
   // Odredi status tokena na temelju scenarija
   const getTokenStatus = (token) => {
@@ -331,6 +526,14 @@ export default function ArenaFrame({
   }, [pendingScenario, currentScenario]);
 
   const handleScenarioChange = useCallback((newScenario) => {
+    // 🌐 SYNC MODE - emit to server
+    if (syncMode && socketRef.current && testingMode) {
+      console.log(`🌐 Emitting test scenario to server: ${newScenario}`);
+      socketRef.current.emit('test_scenario', newScenario);
+      return;
+    }
+
+    // 💻 LOCAL MODE - original logic
     if (isTransitioning || pendingScenario) {
       console.log("⚠️ Scenario change blocked - already transitioning");
       return;
@@ -346,7 +549,7 @@ export default function ArenaFrame({
       videoRef.current.loop = false;
       console.log("🔄 Loop disabled, waiting for video to end...");
     }
-  }, [currentScenario, isTransitioning, pendingScenario]);
+  }, [currentScenario, isTransitioning, pendingScenario, syncMode, testingMode]);
 
   useEffect(() => {
     if (!cryptoConfig.enabled) return;
@@ -413,6 +616,97 @@ export default function ArenaFrame({
           .catch(err => console.error("Video play error:", err));
     }
   }, [currentScenario, videos, currentVideoSrc]);
+
+  // 💚 HEALTH SYSTEM - Update health based on market changes
+  useEffect(() => {
+    setHealth(prev => {
+      const newHealth = { ...prev };
+
+      // SOL health changes
+      if (marketData.sol.change24h > 2) {
+        // Pumping - heal
+        newHealth.sol = Math.min(100, prev.sol + 5);
+      } else if (marketData.sol.change24h < -2) {
+        // Dumping - take damage
+        const damage = Math.abs(marketData.sol.change24h) * 2;
+        newHealth.sol = Math.max(0, prev.sol - damage);
+        setLastDamage(ld => ({ ...ld, sol: Date.now() }));
+      }
+
+      // BNB health changes
+      if (marketData.bnb.change24h > 2) {
+        // Pumping - heal
+        newHealth.bnb = Math.min(100, prev.bnb + 5);
+      } else if (marketData.bnb.change24h < -2) {
+        // Dumping - take damage
+        const damage = Math.abs(marketData.bnb.change24h) * 2;
+        newHealth.bnb = Math.max(0, prev.bnb - damage);
+        setLastDamage(ld => ({ ...ld, bnb: Date.now() }));
+      }
+
+      return newHealth;
+    });
+  }, [marketData]);
+
+  // 🔴 RED FLASH when taking damage
+  const isFlashing = (
+      (Date.now() - lastDamage.sol < 300 && health.sol > 0) ||
+      (Date.now() - lastDamage.bnb < 300 && health.bnb > 0)
+  );
+
+  // 🎮 KEYBOARD SHORTCUTS FOR TESTING
+  useEffect(() => {
+    if (!testingMode) return;
+
+    const handleKeyPress = (e) => {
+      // Ignore if typing in input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const keyMap = {
+        '1': 'idle',
+        '2': 'solPump',
+        '3': 'bnbPump',
+        '4': 'bothPump',
+        '5': 'solDump',
+        '6': 'bnbDump',
+        '7': 'bothDump',
+        // Market testing (only local mode)
+        'q': () => !syncMode && setMarketData(prev => ({ ...prev, sol: { ...prev.sol, change24h: 8.5 } })),
+        'w': () => !syncMode && setMarketData(prev => ({ ...prev, bnb: { ...prev.bnb, change24h: 6.2 } })),
+        'a': () => !syncMode && setMarketData(prev => ({ ...prev, sol: { ...prev.sol, change24h: -5.3 } })),
+        's': () => !syncMode && setMarketData(prev => ({ ...prev, bnb: { ...prev.bnb, change24h: -4.1 } })),
+        'r': () => !syncMode && setMarketData({ sol: { price: 0, change24h: 0 }, bnb: { price: 0, change24h: 0 } }),
+        // Health reset
+        ' ': () => {
+          if (syncMode && socketRef.current) {
+            socketRef.current.emit('reset_health');
+          } else {
+            setHealth({ sol: 100, bnb: 100 });
+          }
+        },
+        'h': () => {
+          if (syncMode && socketRef.current) {
+            socketRef.current.emit('reset_health');
+          } else {
+            setHealth({ sol: 100, bnb: 100 });
+          }
+        },
+      };
+
+      const action = keyMap[e.key];
+      if (action) {
+        e.preventDefault();
+        if (typeof action === 'function') {
+          action();
+        } else {
+          handleScenarioChange(action);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [testingMode, handleScenarioChange, setMarketData, syncMode]);
 
   // Odredi da li je aktivan scenario za screen shake
   const shouldShake = currentScenario.includes('Pump') || currentScenario.includes('Dump');
@@ -598,6 +892,18 @@ export default function ArenaFrame({
           )}
         </div>
 
+        {/* 🔴 DAMAGE FLASH OVERLAY */}
+        {isFlashing && (
+            <div
+                className="absolute inset-0 bg-red-600 pointer-events-none z-40 animate-ping"
+                style={{
+                  animationDuration: '0.3s',
+                  opacity: 0.4,
+                  mixBlendMode: 'screen'
+                }}
+            />
+        )}
+
         {/* 🎮 PIXEL ART TOP BAR */}
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
           <div className="relative pixel-font">
@@ -607,6 +913,42 @@ export default function ArenaFrame({
             }} />
 
             <div className="relative flex items-center gap-3 px-6 py-3 bg-black border-4 border-gray-800 scanlines">
+              {/* Sync mode indicator */}
+              {syncMode && (
+                  <>
+                    <div className={cls(
+                        "w-3 h-3",
+                        isConnected ? "bg-green-500" : "bg-red-500"
+                    )} style={{
+                      animation: isConnected ? 'blink 2s infinite' : 'blink 0.3s infinite',
+                      imageRendering: 'pixelated'
+                    }} />
+                    <span className={cls(
+                        "text-[10px] tracking-widest",
+                        isConnected ? "text-green-400" : "text-red-400"
+                    )}>
+                  {isConnected ? '🌐 SYNC' : '⚠️ OFFLINE'}
+                </span>
+                    {isConnected && userCount > 0 && (
+                        <span className="text-[8px] text-gray-500">
+                    [{userCount} 👥]
+                  </span>
+                    )}
+                    <div className="w-1 h-4 bg-gray-600" />
+                  </>
+              )}
+
+              {/* Testing mode indicator */}
+              {testingMode && (
+                  <>
+                    <div className="w-3 h-3 bg-yellow-500" style={{ animation: 'blink 0.5s infinite', imageRendering: 'pixelated' }} />
+                    <span className="text-[10px] text-yellow-400 tracking-widest">
+                  🧪 TEST
+                </span>
+                    <div className="w-1 h-4 bg-gray-600" />
+                  </>
+              )}
+
               {/* Blinking dot */}
               <div className="w-3 h-3 bg-red-500" style={{ animation: 'blink 1s infinite', imageRendering: 'pixelated' }} />
 
@@ -654,6 +996,25 @@ export default function ArenaFrame({
               )}
             </div>
           </div>
+        </div>
+
+        {/* 💚 HEALTH BARS */}
+        <div className="absolute top-20 left-6 z-20">
+          <HealthBar
+              health={health.sol}
+              side="left"
+              label="SOLANA"
+              lastDamage={lastDamage.sol}
+          />
+        </div>
+
+        <div className="absolute top-20 right-6 z-20">
+          <HealthBar
+              health={health.bnb}
+              side="right"
+              label="BNB"
+              lastDamage={lastDamage.bnb}
+          />
         </div>
 
         <div className="absolute left-6 top-1/2 -translate-y-1/2 hidden sm:block z-20">
@@ -791,7 +1152,15 @@ export default function ArenaFrame({
                       {marketData.sol.change24h >= 0 ? "+" : ""}{marketData.sol.change24h.toFixed(1)}%
                     </div>
 
-                    <div className="text-[7px] text-gray-500 mt-1">24H</div>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="text-[7px] text-gray-500">24H</div>
+                      <div className={cls(
+                          "text-[7px] font-bold",
+                          health.sol < 30 ? "text-red-400" : "text-green-400"
+                      )}>
+                        HP:{Math.round(health.sol)}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -817,156 +1186,235 @@ export default function ArenaFrame({
                       {marketData.bnb.change24h >= 0 ? "+" : ""}{marketData.bnb.change24h.toFixed(1)}%
                     </div>
 
-                    <div className="text-[7px] text-gray-500 mt-1">24H</div>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="text-[7px] text-gray-500">24H</div>
+                      <div className={cls(
+                          "text-[7px] font-bold",
+                          health.bnb < 30 ? "text-red-400" : "text-green-400"
+                      )}>
+                        HP:{Math.round(health.bnb)}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
         )}
 
-        {/* 🎮 PIXEL ART CONTROL PANEL */}
-        <div className="absolute bottom-6 right-6 z-30 pixel-font">
-          <div className="relative">
-            <div className="flex flex-col gap-0 bg-black border-4 border-gray-700 scanlines" style={{
-              minWidth: '200px',
-              boxShadow: '8px 8px 0 rgba(0,0,0,0.5)',
-              imageRendering: 'pixelated'
-            }}>
-              {/* Header */}
-              <div className="px-4 py-2 bg-gray-800 border-b-4 border-gray-700 flex items-center justify-between">
-              <span className="text-[8px] text-yellow-400 tracking-wider">
-                CONTROLS
-              </span>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500" style={{ animation: 'blink 1s infinite', imageRendering: 'pixelated' }} />
-                  <span className="text-[7px] text-green-400">RDY</span>
-                </div>
-              </div>
+        {/* 🎮 PIXEL ART CONTROL PANEL - ONLY IN TESTING MODE */}
+        {testingMode && (
+            <div className="absolute bottom-6 right-6 z-30 pixel-font">
+              <div className="relative">
+                <div className="flex flex-col gap-0 bg-black border-4 border-gray-700 scanlines" style={{
+                  minWidth: '200px',
+                  boxShadow: '8px 8px 0 rgba(0,0,0,0.5)',
+                  imageRendering: 'pixelated'
+                }}>
+                  {/* Header */}
+                  <div className="px-4 py-2 bg-gray-800 border-b-4 border-gray-700 flex items-center justify-between">
+                <span className="text-[8px] text-yellow-400 tracking-wider">
+                  🧪 TEST MODE
+                </span>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-green-500" style={{ animation: 'blink 1s infinite', imageRendering: 'pixelated' }} />
+                      <span className="text-[7px] text-green-400">RDY</span>
+                    </div>
+                  </div>
 
-              <div className="p-3">
-                {/* Status */}
-                {isTransitioning && (
-                    <div className="px-2 py-2 mb-2 bg-red-900 border-2 border-red-500" style={{ animation: 'blink 0.5s infinite' }}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-red-500" style={{ imageRendering: 'pixelated' }} />
-                        <span className="text-[8px] text-red-400 tracking-wider">LOCKED</span>
+                  <div className="p-3">
+                    {/* Status */}
+                    {isTransitioning && (
+                        <div className="px-2 py-2 mb-2 bg-red-900 border-2 border-red-500" style={{ animation: 'blink 0.5s infinite' }}>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-red-500" style={{ imageRendering: 'pixelated' }} />
+                            <span className="text-[8px] text-red-400 tracking-wider">LOCKED</span>
+                          </div>
+                        </div>
+                    )}
+
+                    {/* Scenario Buttons */}
+                    <div className="flex flex-col gap-2">
+                      {[
+                        { key: "idle", label: "IDLE", icon: "▣", shortcut: "1" },
+                        { key: "solPump", label: "SOL+", icon: "↑", shortcut: "2" },
+                        { key: "bnbPump", label: "BNB+", icon: "↑", shortcut: "3" },
+                        { key: "bothPump", label: "BOTH+", icon: "↑↑", shortcut: "4" },
+                        { key: "solDump", label: "SOL-", icon: "↓", shortcut: "5" },
+                        { key: "bnbDump", label: "BNB-", icon: "↓", shortcut: "6" },
+                        { key: "bothDump", label: "BOTH-", icon: "↓↓", shortcut: "7" },
+                      ].map(({ key, label, icon, shortcut }) => {
+                        const isDisabled = isTransitioning || pendingScenario !== null;
+                        const isActive = currentScenario === key;
+                        const isPending = pendingScenario === key;
+
+                        return (
+                            <button
+                                key={key}
+                                onClick={() => handleScenarioChange(key)}
+                                disabled={isDisabled}
+                                className={cls(
+                                    "px-3 py-2 font-bold text-[8px] transition-all flex items-center justify-between gap-2",
+                                    "border-2",
+                                    isDisabled && !isActive && !isPending
+                                        ? "bg-gray-900 text-gray-600 border-gray-800 cursor-not-allowed"
+                                        : isActive
+                                            ? "bg-yellow-500 text-black border-yellow-700"
+                                            : isPending
+                                                ? "bg-yellow-400 text-black border-yellow-600"
+                                                : "bg-gray-800 text-white border-gray-600 hover:bg-gray-700"
+                                )}
+                                style={{
+                                  boxShadow: isActive ? '2px 2px 0 rgba(0,0,0,0.5)' : 'none',
+                                  imageRendering: 'pixelated'
+                                }}
+                            >
+                              <span className="tracking-wider">{label}</span>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px]">{icon}</span>
+                                <span className="text-[6px] text-gray-500">[{shortcut}]</span>
+                              </div>
+                            </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Footer Stats */}
+                    <div className="mt-3 pt-2 border-t-2 border-gray-800">
+                      <div className="flex items-center justify-between text-[7px]">
+                        <span className="text-gray-500">VID</span>
+                        <span className="text-gray-400">
+                      {Object.keys(videos).filter(k => videos[k]).length}/{Object.keys(videos).length}
+                    </span>
                       </div>
                     </div>
-                )}
 
-                {/* Scenario Buttons */}
-                <div className="flex flex-col gap-2">
-                  {[
-                    { key: "idle", label: "IDLE", icon: "▣" },
-                    { key: "solPump", label: "SOL+", icon: "↑" },
-                    { key: "bnbPump", label: "BNB+", icon: "↑" },
-                    { key: "bothPump", label: "BOTH+", icon: "↑↑" },
-                    { key: "solDump", label: "SOL-", icon: "↓" },
-                    { key: "bnbDump", label: "BNB-", icon: "↓" },
-                    { key: "bothDump", label: "BOTH-", icon: "↓↓" },
-                  ].map(({ key, label, icon }) => {
-                    const isDisabled = isTransitioning || pendingScenario !== null;
-                    const isActive = currentScenario === key;
-                    const isPending = pendingScenario === key;
+                    {/* MARKET TEST */}
+                    <div className="mt-3 pt-2 border-t-2 border-gray-800">
+                      <div className="text-[7px] text-gray-500 mb-2">
+                        MARKET {syncMode && '(SERVER)'}
+                      </div>
+                      {syncMode ? (
+                          <div className="text-[6px] text-gray-600 leading-relaxed">
+                            Market data controlled by server. Use scenario buttons to test.
+                          </div>
+                      ) : (
+                          <div className="grid grid-cols-2 gap-1">
+                            <button
+                                onClick={() => setMarketData(prev => ({
+                                  ...prev,
+                                  sol: { ...prev.sol, change24h: 8.5 }
+                                }))}
+                                className="px-2 py-1 bg-green-900 hover:bg-green-800 border-2 border-green-600 text-[7px] text-green-400"
+                                style={{ imageRendering: 'pixelated' }}
+                            >
+                              S+[Q]
+                            </button>
+                            <button
+                                onClick={() => setMarketData(prev => ({
+                                  ...prev,
+                                  bnb: { ...prev.bnb, change24h: 6.2 }
+                                }))}
+                                className="px-2 py-1 bg-green-900 hover:bg-green-800 border-2 border-green-600 text-[7px] text-green-400"
+                                style={{ imageRendering: 'pixelated' }}
+                            >
+                              B+[W]
+                            </button>
+                            <button
+                                onClick={() => setMarketData(prev => ({
+                                  ...prev,
+                                  sol: { ...prev.sol, change24h: -5.3 }
+                                }))}
+                                className="px-2 py-1 bg-red-900 hover:bg-red-800 border-2 border-red-600 text-[7px] text-red-400"
+                                style={{ imageRendering: 'pixelated' }}
+                            >
+                              S-[A]
+                            </button>
+                            <button
+                                onClick={() => setMarketData(prev => ({
+                                  ...prev,
+                                  bnb: { ...prev.bnb, change24h: -4.1 }
+                                }))}
+                                className="px-2 py-1 bg-red-900 hover:bg-red-800 border-2 border-red-600 text-[7px] text-red-400"
+                                style={{ imageRendering: 'pixelated' }}
+                            >
+                              B-[S]
+                            </button>
+                            <button
+                                onClick={() => setMarketData({
+                                  sol: { price: 0, change24h: 0 },
+                                  bnb: { price: 0, change24h: 0 }
+                                })}
+                                className="col-span-2 px-2 py-1 bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 text-[7px] text-gray-400"
+                                style={{ imageRendering: 'pixelated' }}
+                            >
+                              RST[R]
+                            </button>
+                          </div>
+                      )}
+                    </div>
 
-                    return (
+                    {/* KEYBOARD SHORTCUTS INFO */}
+                    <div className="mt-3 pt-2 border-t-2 border-gray-800">
+                      <div className="text-[6px] text-gray-500 leading-relaxed">
+                        <div className="mb-1">⌨️ SHORTCUTS:</div>
+                        <div>1-7: Scenarios</div>
+                        <div>Q/W: SOL/BNB +</div>
+                        <div>A/S: SOL/BNB -</div>
+                        <div>R: Reset Market</div>
+                        <div>H/SPACE: Reset HP</div>
+                      </div>
+                    </div>
+
+                    {/* HEALTH CONTROLS */}
+                    <div className="mt-3 pt-2 border-t-2 border-gray-800">
+                      <div className="text-[7px] text-gray-500 mb-2">HEALTH</div>
+                      <div className="grid grid-cols-2 gap-1 mb-1">
                         <button
-                            key={key}
-                            onClick={() => handleScenarioChange(key)}
-                            disabled={isDisabled}
-                            className={cls(
-                                "px-3 py-2 font-bold text-[8px] transition-all flex items-center justify-between gap-2",
-                                "border-2",
-                                isDisabled && !isActive && !isPending
-                                    ? "bg-gray-900 text-gray-600 border-gray-800 cursor-not-allowed"
-                                    : isActive
-                                        ? "bg-yellow-500 text-black border-yellow-700"
-                                        : isPending
-                                            ? "bg-yellow-400 text-black border-yellow-600"
-                                            : "bg-gray-800 text-white border-gray-600 hover:bg-gray-700"
-                            )}
-                            style={{
-                              boxShadow: isActive ? '2px 2px 0 rgba(0,0,0,0.5)' : 'none',
-                              imageRendering: 'pixelated'
+                            onClick={() => {
+                              if (syncMode && socketRef.current) {
+                                socketRef.current.emit('test_health', { sol: health.sol - 20 });
+                              } else {
+                                setHealth(prev => ({ ...prev, sol: Math.max(0, prev.sol - 20) }));
+                              }
                             }}
+                            className="px-2 py-1 bg-red-900 hover:bg-red-800 border-2 border-red-600 text-[7px] text-red-400"
+                            style={{ imageRendering: 'pixelated' }}
                         >
-                          <span className="tracking-wider">{label}</span>
-                          <span className="text-[10px]">{icon}</span>
+                          S-20
                         </button>
-                    );
-                  })}
-                </div>
-
-                {/* Footer Stats */}
-                <div className="mt-3 pt-2 border-t-2 border-gray-800">
-                  <div className="flex items-center justify-between text-[7px]">
-                    <span className="text-gray-500">VID</span>
-                    <span className="text-gray-400">
-                    {Object.keys(videos).filter(k => videos[k]).length}/{Object.keys(videos).length}
-                  </span>
-                  </div>
-                </div>
-
-                {/* MARKET TEST */}
-                <div className="mt-3 pt-2 border-t-2 border-gray-800">
-                  <div className="text-[7px] text-gray-500 mb-2">MARKET</div>
-                  <div className="grid grid-cols-2 gap-1">
-                    <button
-                        onClick={() => setMarketData(prev => ({
-                          ...prev,
-                          sol: { ...prev.sol, change24h: 8.5 }
-                        }))}
-                        className="px-2 py-1 bg-green-900 hover:bg-green-800 border-2 border-green-600 text-[7px] text-green-400"
-                        style={{ imageRendering: 'pixelated' }}
-                    >
-                      S+
-                    </button>
-                    <button
-                        onClick={() => setMarketData(prev => ({
-                          ...prev,
-                          bnb: { ...prev.bnb, change24h: 6.2 }
-                        }))}
-                        className="px-2 py-1 bg-green-900 hover:bg-green-800 border-2 border-green-600 text-[7px] text-green-400"
-                        style={{ imageRendering: 'pixelated' }}
-                    >
-                      B+
-                    </button>
-                    <button
-                        onClick={() => setMarketData(prev => ({
-                          ...prev,
-                          sol: { ...prev.sol, change24h: -5.3 }
-                        }))}
-                        className="px-2 py-1 bg-red-900 hover:bg-red-800 border-2 border-red-600 text-[7px] text-red-400"
-                        style={{ imageRendering: 'pixelated' }}
-                    >
-                      S-
-                    </button>
-                    <button
-                        onClick={() => setMarketData(prev => ({
-                          ...prev,
-                          bnb: { ...prev.bnb, change24h: -4.1 }
-                        }))}
-                        className="px-2 py-1 bg-red-900 hover:bg-red-800 border-2 border-red-600 text-[7px] text-red-400"
-                        style={{ imageRendering: 'pixelated' }}
-                    >
-                      B-
-                    </button>
-                    <button
-                        onClick={() => setMarketData({
-                          sol: { price: 0, change24h: 0 },
-                          bnb: { price: 0, change24h: 0 }
-                        })}
-                        className="col-span-2 px-2 py-1 bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 text-[7px] text-gray-400"
-                        style={{ imageRendering: 'pixelated' }}
-                    >
-                      RST
-                    </button>
+                        <button
+                            onClick={() => {
+                              if (syncMode && socketRef.current) {
+                                socketRef.current.emit('test_health', { bnb: health.bnb - 20 });
+                              } else {
+                                setHealth(prev => ({ ...prev, bnb: Math.max(0, prev.bnb - 20) }));
+                              }
+                            }}
+                            className="px-2 py-1 bg-red-900 hover:bg-red-800 border-2 border-red-600 text-[7px] text-red-400"
+                            style={{ imageRendering: 'pixelated' }}
+                        >
+                          B-20
+                        </button>
+                      </div>
+                      <button
+                          onClick={() => {
+                            if (syncMode && socketRef.current) {
+                              socketRef.current.emit('reset_health');
+                            } else {
+                              setHealth({ sol: 100, bnb: 100 });
+                            }
+                          }}
+                          className="w-full px-2 py-1 bg-green-900 hover:bg-green-800 border-2 border-green-600 text-[7px] text-green-400"
+                          style={{ imageRendering: 'pixelated' }}
+                      >
+                        RESET HP[H]
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+        )}
       </section>
   );
 }

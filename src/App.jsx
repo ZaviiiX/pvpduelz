@@ -11,6 +11,13 @@ export default function App() {
                 arenaOpacity={0.8}
                 arenaFit="cover"
                 aspect="16/9"
+
+                testingMode={true}
+
+                // 🌐 FULL SYNC - DODAJ OVO!
+                syncMode={true}
+                serverUrl="http://localhost:3001"
+
                 videos={{
                     idle: "/videos/solana-vs-bnb.mp4",
                     solPump: "/videos/sol-winning.mp4",
@@ -19,19 +26,13 @@ export default function App() {
                     bnbDump: "/videos/bnb-losing.mp4",
                     bothPump: "/videos/both-pumping.mp4",
                     bothDump: "/videos/both-dumping.mp4",
-
-                    // ✅ ISPRAVLJENO - pravi naziv videa
-                    solBack: "/videos/solana-vs-bnb.mp4",  // 🧪 placeholder dok ne napraviš
-                    bnbBack: "/videos/bnb-winning-backto-stance.mp4",  // ✅ PRAVI VIDEO
-                    bothBack: "/videos/solana-vs-bnb.mp4",  // 🧪 placeholder
+                    solBack: "/videos/solana-vs-bnb.mp4",
+                    bnbBack: "/videos/bnb-winning-backto-stance.mp4",
+                    bothBack: "/videos/solana-vs-bnb.mp4",
                 }}
+
                 cryptoConfig={{
                     enabled: false,
-                    solanaTokenAddress: "",
-                    bnbTokenAddress: "",
-                    checkInterval: 30000,
-                    pumpThreshold: 5,
-                    dumpThreshold: -5,
                 }}
             />
         </div>

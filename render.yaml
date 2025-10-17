@@ -1,0 +1,29 @@
+services:
+  # Backend WebSocket Server
+  - type: web
+    name: arena-server
+    runtime: node
+    plan: free
+    rootDir: ./arena-server
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  # Frontend React App
+  - type: web
+    name: arena-frontend
+    runtime: static
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    pullRequestPreviewsEnabled: true
+    envVars:
+      - key: VITE_SERVER_URL
+        value: https://arena-server.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

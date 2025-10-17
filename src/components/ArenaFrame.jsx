@@ -167,7 +167,6 @@ export default function ArenaFrame({
   // 🎬 SINGLE VIDEO REF
   const videoRef = useRef(null);
 
-  const [loaded, setLoaded] = useState(false);
   const [arenaLoaded, setArenaLoaded] = useState(true);
   const [currentScenario, setCurrentScenario] = useState("idle");
   const [pendingScenario, setPendingScenario] = useState(null);
@@ -197,6 +196,16 @@ export default function ArenaFrame({
   useEffect(() => {
     currentScenarioRef.current = currentScenario;
   }, [currentScenario]);
+
+  // 🎬 Initial video setup
+  useEffect(() => {
+    if (videoRef.current && videos.idle) {
+      videoRef.current.src = videos.idle;
+      videoRef.current.loop = true;
+      videoRef.current.load();
+      videoRef.current.play().catch(err => console.error("Initial play error:", err));
+    }
+  }, [videos.idle]);
 
   // 🌐 WEBSOCKET CONNECTION
   useEffect(() => {
@@ -286,8 +295,6 @@ export default function ArenaFrame({
       return;
     }
 
-    // Reset loaded state
-    setLoaded(false);
     isLoadingRef.current = true;
 
     // Set video properties
@@ -297,7 +304,6 @@ export default function ArenaFrame({
 
     const handleLoadedData = () => {
       console.log(`✅ Video loaded: ${currentScenario}`);
-      setLoaded(true);
       isLoadingRef.current = false;
 
       videoRef.current.play()
@@ -311,7 +317,6 @@ export default function ArenaFrame({
     const handleError = (e) => {
       console.error(`❌ Video load error for ${currentScenario}:`, e);
       isLoadingRef.current = false;
-      setLoaded(true); // Show video anyway
     };
 
     videoRef.current.addEventListener('loadeddata', handleLoadedData);
@@ -593,15 +598,6 @@ export default function ArenaFrame({
             <div className="absolute -inset-2 bg-black border-4 border-gray-900" />
 
             <div className="relative w-full h-full overflow-hidden scanlines border-4 border-gray-800">
-              {/* Loading Indicator */}
-              {!loaded && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black z-20">
-                    <div className="pixel-font text-yellow-400 text-[10px] animate-pulse">
-                      LOADING...
-                    </div>
-                  </div>
-              )}
-
               <video
                   ref={videoRef}
                   className="w-full h-full block object-cover"
@@ -611,9 +607,7 @@ export default function ArenaFrame({
                   loop
                   onEnded={handleVideoEnded}
                   style={{
-                    imageRendering: 'pixelated',
-                    opacity: loaded ? 1 : 0,
-                    transition: 'opacity 0.3s'
+                    imageRendering: 'pixelated'
                   }}
               />
 

@@ -550,6 +550,7 @@ export default function ArenaFrame({
   }, [cryptoConfig, marketData, currentScenario, handleScenarioChange]);
 
   // 🎬 DUAL VIDEO SWITCHING WITH CROSSFADE
+  // 🎬 DUAL VIDEO SWITCHING WITH CROSSFADE
   useEffect(() => {
     if (currentScenario) {
       console.log(`📺 Loading new video: ${currentScenario}`);
@@ -564,36 +565,43 @@ export default function ArenaFrame({
         return;
       }
 
-      const currentRef = activeVideo === 1 ? videoRef : videoRef2;
-      const nextRef = activeVideo === 1 ? videoRef2 : videoRef;
+      // Determine which video to switch to
+      setActiveVideo(prev => {
+        const nextActive = prev === 1 ? 2 : 1;
+        const currentRef = prev === 1 ? videoRef : videoRef2;
+        const nextRef = prev === 1 ? videoRef2 : videoRef;
 
-      if (nextRef.current) {
-        nextRef.current.src = videoSrc;
-        nextRef.current.loop = currentScenario === "idle";
-        nextRef.current.load();
+        if (nextRef.current) {
+          nextRef.current.src = videoSrc;
+          nextRef.current.loop = currentScenario === "idle";
+          nextRef.current.load();
 
-        nextRef.current.onloadeddata = () => {
-          nextRef.current.play().then(() => {
-            console.log(`▶️ Playing: ${currentScenario}`);
+          nextRef.current.onloadeddata = () => {
+            nextRef.current.play().then(() => {
+              console.log(`▶️ Playing: ${currentScenario}`);
 
-            if (currentRef.current) {
-              currentRef.current.style.opacity = '0';
-            }
-            nextRef.current.style.opacity = '1';
-
-            setTimeout(() => {
+              // Crossfade
               if (currentRef.current) {
-                currentRef.current.pause();
-                currentRef.current.currentTime = 0;
+                currentRef.current.style.opacity = '0';
               }
-              setActiveVideo(activeVideo === 1 ? 2 : 1);
-              setLoaded(true);
-            }, 300);
-          }).catch(err => console.error("Video play error:", err));
-        };
-      }
+              nextRef.current.style.opacity = '1';
+
+              // Cleanup old video after fade
+              setTimeout(() => {
+                if (currentRef.current) {
+                  currentRef.current.pause();
+                  currentRef.current.currentTime = 0;
+                }
+                setLoaded(true);
+              }, 300);
+            }).catch(err => console.error("Video play error:", err));
+          };
+        }
+
+        return nextActive;
+      });
     }
-  }, [currentScenario, videos, activeVideo]);
+  }, [currentScenario, videos]); // ✅ UKLONJEN activeVideo
 
   useEffect(() => {
     setHealth(prev => {

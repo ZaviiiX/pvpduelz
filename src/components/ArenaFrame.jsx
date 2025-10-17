@@ -1082,7 +1082,9 @@ export default function ArenaFrame({
                   style={{
                     imageRendering: 'pixelated',
                     opacity: activeVideo === 1 ? 1 : 0,
-                    zIndex: activeVideo === 1 ? 2 : 1
+                    zIndex: activeVideo === 1 ? 20 : 10,  // ⬅️ POVEĆAJ Z-INDEX
+                    position: 'absolute',  // ⬅️ EXPLICIT
+                    inset: 0  // ⬅️ EXPLICIT
                   }}
               />
 
@@ -1097,7 +1099,9 @@ export default function ArenaFrame({
                   style={{
                     imageRendering: 'pixelated',
                     opacity: activeVideo === 2 ? 1 : 0,
-                    zIndex: activeVideo === 2 ? 2 : 1
+                    zIndex: activeVideo === 2 ? 20 : 10,  // ⬅️ POVEĆAJ Z-INDEX
+                    position: 'absolute',  // ⬅️ EXPLICIT
+                    inset: 0  // ⬅️ EXPLICIT
                   }}
               />
 
@@ -1473,9 +1477,12 @@ export default function ArenaFrame({
                     </div>
 
                     <div className="mt-2 pt-2 border-t border-red-700">
-                      <div className="font-bold text-green-400">EXPECTED:</div>
-                      <div>Video {activeVideo} should be visible (opacity: 1)</div>
-                      <div>Video {activeVideo === 1 ? 2 : 1} should be hidden (opacity: 0)</div>
+                      <div className="font-bold text-blue-400 mb-1">LAYOUT DEBUG:</div>
+                      <div>Container z-index: {document.querySelector('.relative.z-10')?.style.zIndex || 'auto'}</div>
+                      <div>Video1 visible: {videoRef.current ? (window.getComputedStyle(videoRef.current).visibility) : '?'}</div>
+                      <div>Video2 visible: {videoRef2.current ? (window.getComputedStyle(videoRef2.current).visibility) : '?'}</div>
+                      <div>Video1 display: {videoRef.current ? (window.getComputedStyle(videoRef.current).display) : '?'}</div>
+                      <div>Video2 display: {videoRef2.current ? (window.getComputedStyle(videoRef2.current).display) : '?'}</div>
                     </div>
                   </div>
                 </div>

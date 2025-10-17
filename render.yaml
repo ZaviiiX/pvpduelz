@@ -17,7 +17,7 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_SERVER_URL
-        value: https://arena-server.onrender.com
+        value: https://arena-server-gh2h.onrender.com
     routes:
       - type: rewrite
         source: /*

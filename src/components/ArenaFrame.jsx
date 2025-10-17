@@ -385,9 +385,12 @@ export default function ArenaFrame({
       setIsTransitioning(state.isTransitioning);
       setServerTime(state.videoTime);
 
-      const currentRef = activeVideo === 1 ? videoRef : videoRef2;
-      if (currentRef.current && state.videoTime > 0) {
-        currentRef.current.currentTime = state.videoTime;
+      // Sync both videos just in case
+      if (videoRef.current && state.videoTime > 0) {
+        videoRef.current.currentTime = state.videoTime;
+      }
+      if (videoRef2.current && state.videoTime > 0) {
+        videoRef2.current.currentTime = state.videoTime;
       }
     });
 
@@ -408,10 +411,19 @@ export default function ArenaFrame({
 
     socket.on('video_sync', ({ scenario, time }) => {
       setServerTime(time);
-      const currentRef = activeVideo === 1 ? videoRef : videoRef2;
-      if (currentRef.current && Math.abs(currentRef.current.currentTime - time) > 2) {
-        console.log(`⏰ Syncing video: ${currentRef.current.currentTime.toFixed(1)}s → ${time.toFixed(1)}s`);
-        currentRef.current.currentTime = time;
+
+      // Sync active video
+      if (videoRef.current && videoRef.current.style.opacity === '1') {
+        if (Math.abs(videoRef.current.currentTime - time) > 2) {
+          console.log(`⏰ Syncing video 1: ${videoRef.current.currentTime.toFixed(1)}s → ${time.toFixed(1)}s`);
+          videoRef.current.currentTime = time;
+        }
+      }
+      if (videoRef2.current && videoRef2.current.style.opacity === '1') {
+        if (Math.abs(videoRef2.current.currentTime - time) > 2) {
+          console.log(`⏰ Syncing video 2: ${videoRef2.current.currentTime.toFixed(1)}s → ${time.toFixed(1)}s`);
+          videoRef2.current.currentTime = time;
+        }
       }
     });
 
@@ -423,7 +435,7 @@ export default function ArenaFrame({
       console.log('🔌 Disconnecting from server');
       socket.disconnect();
     };
-  }, [syncMode, serverUrl, activeVideo]);
+  }, [syncMode, serverUrl]); // ✅ UKLONJEN activeVideo
 
   const getTokenStatus = (token) => {
     const isSol = token.label.toLowerCase().includes('sol');

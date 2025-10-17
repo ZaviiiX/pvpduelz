@@ -118,9 +118,6 @@ export default function ArenaFrame({
                                      aspect = "16/9",
                                      leftToken = { label: "SOLANA", tone: "#14F195" },
                                      rightToken = { label: "BNB", tone: "#F0B90B" },
-                                     arenaImage = "/images/arena.png",
-                                     arenaFit = "cover",
-                                     arenaOpacity = 1,
                                      fullHeight = true,
                                      testingMode = true,
                                      syncMode = true,
@@ -143,7 +140,6 @@ export default function ArenaFrame({
   const video2Ref = useRef(null);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0); // 0 or 1
 
-  const [arenaLoaded, setArenaLoaded] = useState(true);
   const [currentScenario, setCurrentScenario] = useState("idle");
   const [pendingScenario, setPendingScenario] = useState(null);
   const lastScenarioChangeRef = useRef(0);
@@ -395,22 +391,22 @@ export default function ArenaFrame({
         }
       `}</style>
 
-        <div className="absolute inset-0">
-          {arenaImage && arenaLoaded ? (
-              <>
-                <img
-                    src={arenaImage}
-                    alt="arena"
-                    className="absolute inset-0 w-full h-full object-center blur-xl"
-                    style={{ objectFit: arenaFit, opacity: arenaOpacity * 0.5 }}
-                    onError={() => setArenaLoaded(false)}
-                />
-                <div className="absolute inset-0" style={{ boxShadow: "inset 0 -80px 150px rgba(0,0,0,0.5)" }} />
-              </>
-          ) : (
-              <div className="absolute inset-0 bg-[#0f1318]" />
-          )}
-        </div>
+        {/* Simple gradient background with grid pattern */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0c0f] via-[#0f1318] to-[#1a1f28]" />
+
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 opacity-10" style={{
+          backgroundImage: `
+            repeating-linear-gradient(0deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 40px),
+            repeating-linear-gradient(90deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 40px)
+          `,
+          backgroundSize: '40px 40px'
+        }} />
+
+        {/* Vignette effect */}
+        <div className="absolute inset-0" style={{
+          background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.5) 100%)'
+        }} />
 
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pixel-font">
           <div className="relative flex items-center gap-3 px-6 py-3 bg-black border-4 border-gray-800">

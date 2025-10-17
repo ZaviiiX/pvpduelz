@@ -441,28 +441,56 @@ export default function ArenaFrame({
           <TokenShield {...rightToken} {...getTokenStatus(rightToken)} marketChange={marketData.bnb.change24h} />
         </div>
 
-        <div className="relative z-10" style={{
+        {/* Video container - explicit positioning */}
+        <div style={{
+          position: 'relative',
+          zIndex: 10,
           aspectRatio: aspect,
           width: fullHeight ? "auto" : "min(92vw, 1100px)",
-          height: fullHeight ? "calc(100vh - 180px)" : undefined
+          height: fullHeight ? "calc(100vh - 180px)" : undefined,
+          maxWidth: "min(92vw, 1600px)",
+          maxHeight: fullHeight ? "calc(100vh - 180px)" : undefined
         }}>
-          <div className="relative">
-            <div className="absolute -inset-8 bg-gradient-to-b from-gray-800 via-gray-900 to-black border-8 border-gray-700"
-                 style={{ boxShadow: 'inset 0 4px 0 rgba(255,255,255,0.1), 0 20px 50px rgba(0,0,0,0.8)' }}
-            />
+          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            {/* Frame border - outer */}
+            <div style={{
+              position: 'absolute',
+              inset: '-2rem',
+              background: 'linear-gradient(to bottom, rgb(31, 41, 55), rgb(17, 24, 39), rgb(0, 0, 0))',
+              border: '8px solid rgb(55, 65, 81)',
+              boxShadow: 'inset 0 4px 0 rgba(255,255,255,0.1), 0 20px 50px rgba(0,0,0,0.8)'
+            }} />
 
-            <div className="absolute -inset-2 bg-black border-4 border-gray-900" />
+            {/* Frame border - inner */}
+            <div style={{
+              position: 'absolute',
+              inset: '-0.5rem',
+              background: 'black',
+              border: '4px solid rgb(17, 24, 39)'
+            }} />
 
-            <div className="relative w-full h-full overflow-hidden border-4 border-gray-800">
+            {/* Video container */}
+            <div style={{
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              overflow: 'hidden',
+              border: '4px solid rgb(31, 41, 55)'
+            }}>
               {/* 🎬 VIDEO 1 */}
               <video
                   ref={video1Ref}
-                  className="absolute inset-0 w-full h-full block object-cover"
                   playsInline
                   muted
                   preload="auto"
                   onEnded={handleVideoEnded}
                   style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
                     transition: 'opacity 0.5s ease-in-out',
                     opacity: 0,
                     zIndex: 1
@@ -472,20 +500,32 @@ export default function ArenaFrame({
               {/* 🎬 VIDEO 2 */}
               <video
                   ref={video2Ref}
-                  className="absolute inset-0 w-full h-full block object-cover"
                   playsInline
                   muted
                   preload="auto"
                   onEnded={handleVideoEnded}
                   style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
                     transition: 'opacity 0.5s ease-in-out',
                     opacity: 0,
                     zIndex: 1
                   }}
               />
 
-              <div className="absolute inset-0 pointer-events-none" style={{
+              {/* Scanline overlay */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
                 background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 2px, transparent 2px, transparent 4px)',
+                pointerEvents: 'none',
                 zIndex: 10
               }} />
             </div>

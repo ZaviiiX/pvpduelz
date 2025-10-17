@@ -12,11 +12,11 @@ services:
         value: production
 
   # Frontend React App (Static Site)
-  - type: static
+  - type: web
     name: arena-frontend
+    runtime: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
-    pullRequestPreviewsEnabled: true
     envVars:
       - key: VITE_SERVER_URL
         value: https://arena-server.onrender.com

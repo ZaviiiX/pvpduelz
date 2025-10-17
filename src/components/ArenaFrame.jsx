@@ -11,7 +11,6 @@ function HealthBar({ health, maxHealth = 100, side = "left", label = "PLAYER", l
   const isCritical = healthPercent < 15;
   const isRecentDamage = Date.now() - lastDamage < 300;
 
-  // Health bar color based on percentage
   const getHealthColor = () => {
     if (healthPercent > 60) return 'bg-green-500';
     if (healthPercent > 30) return 'bg-yellow-500';
@@ -20,7 +19,6 @@ function HealthBar({ health, maxHealth = 100, side = "left", label = "PLAYER", l
 
   return (
       <div className="pixel-font">
-        {/* Player Label */}
         <div className={cls(
             "text-[10px] text-white mb-1 tracking-wider",
             side === "left" ? "text-left" : "text-right"
@@ -28,7 +26,6 @@ function HealthBar({ health, maxHealth = 100, side = "left", label = "PLAYER", l
           {label}
         </div>
 
-        {/* Health Bar Container */}
         <div className={cls(
             "relative bg-black border-4 border-gray-700 p-1",
             isRecentDamage && "animate-pulse"
@@ -38,17 +35,14 @@ function HealthBar({ health, maxHealth = 100, side = "left", label = "PLAYER", l
           boxShadow: '4px 4px 0 rgba(0,0,0,0.5)',
           imageRendering: 'pixelated'
         }}>
-          {/* Background grid */}
           <div className="absolute inset-1 opacity-20" style={{
             backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)',
           }} />
 
-          {/* Damage flash overlay */}
           {isRecentDamage && (
               <div className="absolute inset-0 bg-red-500 opacity-60 animate-ping" style={{ animationDuration: '0.3s' }} />
           )}
 
-          {/* Health Bar Fill */}
           <div
               className={cls(
                   "relative h-full transition-all duration-300",
@@ -61,16 +55,12 @@ function HealthBar({ health, maxHealth = 100, side = "left", label = "PLAYER", l
                 imageRendering: 'pixelated'
               }}
           >
-            {/* Shine effect */}
             <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-black/20" />
-
-            {/* Segments */}
             <div className="absolute inset-0" style={{
               backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(0,0,0,0.2) 8px, rgba(0,0,0,0.2) 10px)',
             }} />
           </div>
 
-          {/* Health percentage text */}
           <div className={cls(
               "absolute inset-0 flex items-center justify-center text-white text-[12px] font-black",
               "drop-shadow-[2px_2px_0_rgba(0,0,0,1)]",
@@ -79,7 +69,6 @@ function HealthBar({ health, maxHealth = 100, side = "left", label = "PLAYER", l
             {Math.round(health)}
           </div>
 
-          {/* Critical warning */}
           {isCritical && (
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[8px] text-red-500 font-black animate-bounce">
                 ⚠️ DANGER
@@ -91,15 +80,13 @@ function HealthBar({ health, maxHealth = 100, side = "left", label = "PLAYER", l
 }
 
 function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinning = false, isLosing = false, marketChange = 0 }) {
-  // Calculate intensity based on market change
-  const changeIntensity = Math.min(Math.abs(marketChange) / 10, 1); // 0 to 1
-  const isMoving = Math.abs(marketChange) > 0.5; // Market is moving significantly
+  const changeIntensity = Math.min(Math.abs(marketChange) / 10, 1);
+  const isMoving = Math.abs(marketChange) > 0.5;
   const isPumping = marketChange > 2;
   const isDumping = marketChange < -2;
 
   return (
       <div className="relative">
-        {/* Base glow for active token */}
         {isActive && (
             <div
                 className="absolute inset-0 blur-3xl opacity-60 animate-pulse"
@@ -110,7 +97,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
             />
         )}
 
-        {/* MARKET MOVEMENT GLOW - grows with market cap changes */}
         {isMoving && (
             <div
                 className="absolute inset-0 blur-2xl transition-all duration-1000"
@@ -123,7 +109,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
             />
         )}
 
-        {/* CHARGING RING - appears when pumping */}
         {isPumping && (
             <div className="absolute inset-0 animate-spin-slow">
               <svg viewBox="0 0 120 120" className="w-full h-full" style={{ filter: 'drop-shadow(0 0 10px #00ff00)' }}>
@@ -142,7 +127,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
             </div>
         )}
 
-        {/* DRAINING RING - appears when dumping */}
         {isDumping && (
             <div className="absolute inset-0 animate-spin" style={{ animationDirection: 'reverse' }}>
               <svg viewBox="0 0 120 120" className="w-full h-full" style={{ filter: 'drop-shadow(0 0 10px #ff0000)' }}>
@@ -161,7 +145,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
             </div>
         )}
 
-        {/* ENERGY PARTICLES - shoot out when pumping hard */}
         {isPumping && (
             <div className="absolute inset-0">
               {[...Array(8)].map((_, i) => (
@@ -181,7 +164,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
             </div>
         )}
 
-        {/* HEXAGONAL SHIELD GRID */}
         {isMoving && (
             <div
                 className="absolute inset-0 opacity-40 transition-opacity duration-500"
@@ -206,7 +188,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
             </div>
         )}
 
-        {/* Winning particles */}
         {isWinning && (
             <>
               <div className="absolute inset-0 animate-ping opacity-30">
@@ -228,7 +209,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
             </>
         )}
 
-        {/* Losing effect */}
         {isLosing && (
             <div className="absolute inset-0 animate-shake">
               <div
@@ -241,7 +221,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
             </div>
         )}
 
-        {/* Token image with floating animation and DYNAMIC SCALING */}
         <div className={cls(
             "relative animate-float transition-all duration-500",
             isActive && 'scale-110',
@@ -258,7 +237,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
               }}
           />
 
-          {/* Rotating ring for winning */}
           {isWinning && (
               <div className="absolute inset-0 animate-spin-slow">
                 <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -277,7 +255,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
           )}
         </div>
 
-        {/* PIXEL ART MARKET PERCENTAGE INDICATOR */}
         {isMoving && (
             <div className={cls(
                 "absolute -bottom-8 left-1/2 -translate-x-1/2 px-3 py-1 font-bold text-[8px] pixel-font",
@@ -295,7 +272,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
             </div>
         )}
 
-        {/* Status indicator */}
         {(isWinning || isLosing) && (
             <div className={cls(
                 "absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 text-[8px] font-bold pixel-font border-2",
@@ -322,9 +298,9 @@ export default function ArenaFrame({
                                      arenaFit = "cover",
                                      arenaOpacity = 1,
                                      fullHeight = true,
-                                     testingMode = true, // 🧪 SET TO FALSE FOR PRODUCTION
-                                     syncMode = true, // 🔄 FULL SYNC MODE
-                                     serverUrl = "https://arena-server-gh2h.onrender.com",// 🌐 WebSocket server URL
+                                     testingMode = true,
+                                     syncMode = true,
+                                     serverUrl = "https://arena-server-gh2h.onrender.com",
                                      videos = {
                                        idle: "/videos/solana-vs-bnb.mp4",
                                        solPump: "/videos/sol-winning.mp4",
@@ -346,7 +322,11 @@ export default function ArenaFrame({
                                        dumpThreshold: -5,
                                      },
                                    }) {
+  // 🎬 DUAL VIDEO REFS FOR CROSSFADE
   const videoRef = useRef(null);
+  const videoRef2 = useRef(null);
+  const [activeVideo, setActiveVideo] = useState(1);
+
   const [loaded, setLoaded] = useState(false);
   const [arenaLoaded, setArenaLoaded] = useState(true);
   const [currentScenario, setCurrentScenario] = useState("idle");
@@ -357,7 +337,6 @@ export default function ArenaFrame({
     bnb: { price: 0, change24h: 0 },
   });
 
-  // 💚 HEALTH SYSTEM
   const [health, setHealth] = useState({
     sol: 100,
     bnb: 100,
@@ -367,15 +346,12 @@ export default function ArenaFrame({
     bnb: 0,
   });
 
-  // 🌐 WEBSOCKET STATE
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [userCount, setUserCount] = useState(0);
   const [serverTime, setServerTime] = useState(0);
 
-  const currentVideoSrc = videos[currentScenario] || videos.idle;
-
-  // 🌐 WEBSOCKET CONNECTION (FULL SYNC MODE)
+  // 🌐 WEBSOCKET CONNECTION
   useEffect(() => {
     if (!syncMode) return;
 
@@ -389,19 +365,16 @@ export default function ArenaFrame({
 
     socketRef.current = socket;
 
-    // ✅ Connected
     socket.on('connect', () => {
       console.log('✅ Connected to Arena Server');
       setIsConnected(true);
     });
 
-    // ❌ Disconnected
     socket.on('disconnect', () => {
       console.log('❌ Disconnected from Arena Server');
       setIsConnected(false);
     });
 
-    // 📦 Initial state when joining
     socket.on('initial_state', (state) => {
       console.log('📦 Received initial state:', state);
       setCurrentScenario(state.currentScenario);
@@ -412,13 +385,12 @@ export default function ArenaFrame({
       setIsTransitioning(state.isTransitioning);
       setServerTime(state.videoTime);
 
-      // Sync video to current time
-      if (videoRef.current && state.videoTime > 0) {
-        videoRef.current.currentTime = state.videoTime;
+      const currentRef = activeVideo === 1 ? videoRef : videoRef2;
+      if (currentRef.current && state.videoTime > 0) {
+        currentRef.current.currentTime = state.videoTime;
       }
     });
 
-    // 🔄 State updates (health, market data)
     socket.on('state_update', (update) => {
       console.log('🔄 State update:', update);
       if (update.health) setHealth(update.health);
@@ -428,47 +400,34 @@ export default function ArenaFrame({
       if (update.isTransitioning !== undefined) setIsTransitioning(update.isTransitioning);
     });
 
-    // 🎬 Scenario change
     socket.on('scenario_change', ({ scenario, timestamp }) => {
       console.log('🎬 Scenario change:', scenario);
       setCurrentScenario(scenario);
       setServerTime(0);
-
-      // Reset video to start
-      if (videoRef.current) {
-        videoRef.current.currentTime = 0;
-        videoRef.current.play().catch(err => console.error('Video play error:', err));
-      }
     });
 
-    // 🎥 Video sync (every second from server)
     socket.on('video_sync', ({ scenario, time }) => {
       setServerTime(time);
-
-      // Sync video if drift is too large (>2 seconds)
-      if (videoRef.current && Math.abs(videoRef.current.currentTime - time) > 2) {
-        console.log(`⏰ Syncing video: ${videoRef.current.currentTime.toFixed(1)}s → ${time.toFixed(1)}s`);
-        videoRef.current.currentTime = time;
+      const currentRef = activeVideo === 1 ? videoRef : videoRef2;
+      if (currentRef.current && Math.abs(currentRef.current.currentTime - time) > 2) {
+        console.log(`⏰ Syncing video: ${currentRef.current.currentTime.toFixed(1)}s → ${time.toFixed(1)}s`);
+        currentRef.current.currentTime = time;
       }
     });
 
-    // 👥 User count
     socket.on('user_count', (count) => {
       setUserCount(count);
     });
 
-    // Cleanup
     return () => {
       console.log('🔌 Disconnecting from server');
       socket.disconnect();
     };
-  }, [syncMode, serverUrl]);
+  }, [syncMode, serverUrl, activeVideo]);
 
-  // Odredi status tokena na temelju scenarija
   const getTokenStatus = (token) => {
     const isSol = token.label.toLowerCase().includes('sol');
     const scenario = currentScenario.toLowerCase();
-
     const isRelevantToken = scenario.includes(isSol ? 'sol' : 'bnb') || scenario.includes('both');
 
     return {
@@ -480,8 +439,6 @@ export default function ArenaFrame({
 
   const handleVideoEnded = useCallback(() => {
     console.log("✅ Video ended:", currentScenario);
-    console.log("📊 Video loop status:", videoRef.current?.loop);
-    console.log("🎯 Pending scenario:", pendingScenario);
 
     if (pendingScenario) {
       console.log(`🎬 Switching to pending: ${pendingScenario}`);
@@ -492,48 +449,41 @@ export default function ArenaFrame({
     }
 
     if (currentScenario === "solPump" || currentScenario === "solDump") {
-      console.log("🔙 Transitioning SOL to solBack");
       setCurrentScenario("solBack");
       return;
     }
 
     if (currentScenario === "bnbPump" || currentScenario === "bnbDump") {
-      console.log("🔙 Transitioning BNB to bnbBack");
       setCurrentScenario("bnbBack");
       return;
     }
 
     if (currentScenario === "bothPump" || currentScenario === "bothDump") {
-      console.log("🔙 Transitioning BOTH to bothBack");
       setCurrentScenario("bothBack");
       return;
     }
 
     if (currentScenario === "solBack" || currentScenario === "bnbBack" || currentScenario === "bothBack") {
-      console.log("🏠 Returning to idle from:", currentScenario);
       setCurrentScenario("idle");
       setIsTransitioning(false);
       return;
     }
 
     if (currentScenario === "idle") {
-      console.log("🔄 IDLE ended (shouldn't happen), restarting...");
-      setIsTransitioning(false);
-      if (videoRef.current) {
-        videoRef.current.play();
+      const currentRef = activeVideo === 1 ? videoRef : videoRef2;
+      if (currentRef.current) {
+        currentRef.current.play();
       }
     }
-  }, [pendingScenario, currentScenario]);
+  }, [pendingScenario, currentScenario, activeVideo]);
 
   const handleScenarioChange = useCallback((newScenario) => {
-    // 🌐 SYNC MODE - emit to server
     if (syncMode && socketRef.current && testingMode) {
       console.log(`🌐 Emitting test scenario to server: ${newScenario}`);
       socketRef.current.emit('test_scenario', newScenario);
       return;
     }
 
-    // 💻 LOCAL MODE - original logic
     if (isTransitioning || pendingScenario) {
       console.log("⚠️ Scenario change blocked - already transitioning");
       return;
@@ -545,11 +495,11 @@ export default function ArenaFrame({
     setPendingScenario(newScenario);
     setIsTransitioning(true);
 
-    if (videoRef.current) {
-      videoRef.current.loop = false;
-      console.log("🔄 Loop disabled, waiting for video to end...");
+    const currentRef = activeVideo === 1 ? videoRef : videoRef2;
+    if (currentRef.current) {
+      currentRef.current.loop = false;
     }
-  }, [currentScenario, isTransitioning, pendingScenario, syncMode, testingMode]);
+  }, [currentScenario, isTransitioning, pendingScenario, syncMode, testingMode, activeVideo]);
 
   useEffect(() => {
     if (!cryptoConfig.enabled) return;
@@ -587,58 +537,67 @@ export default function ArenaFrame({
     return () => clearInterval(interval);
   }, [cryptoConfig, marketData, currentScenario, handleScenarioChange]);
 
+  // 🎬 DUAL VIDEO SWITCHING WITH CROSSFADE
   useEffect(() => {
-    if (videoRef.current && currentScenario) {
+    if (currentScenario) {
       console.log(`📺 Loading new video: ${currentScenario}`);
-      console.log(`📂 Video path: ${currentVideoSrc}`);
 
       const videoSrc = videos[currentScenario];
       if (!videoSrc) {
         console.warn(`⚠️ Video not found for scenario: ${currentScenario}`);
-        console.log("Available videos:", Object.keys(videos));
-
         if (currentScenario.includes("Back")) {
-          console.warn("Back video missing, jumping to idle");
           setCurrentScenario("idle");
           setIsTransitioning(false);
         }
         return;
       }
 
-      videoRef.current.load();
+      const currentRef = activeVideo === 1 ? videoRef : videoRef2;
+      const nextRef = activeVideo === 1 ? videoRef2 : videoRef;
 
-      const shouldLoop = currentScenario === "idle";
-      videoRef.current.loop = shouldLoop;
-      console.log(`🔄 Loop: ${shouldLoop ? 'ON' : 'OFF'} for ${currentScenario}`);
+      if (nextRef.current) {
+        nextRef.current.src = videoSrc;
+        nextRef.current.loop = currentScenario === "idle";
+        nextRef.current.load();
 
-      videoRef.current.play()
-          .then(() => console.log(`▶️ Playing: ${currentScenario}`))
-          .catch(err => console.error("Video play error:", err));
+        nextRef.current.onloadeddata = () => {
+          nextRef.current.play().then(() => {
+            console.log(`▶️ Playing: ${currentScenario}`);
+
+            if (currentRef.current) {
+              currentRef.current.style.opacity = '0';
+            }
+            nextRef.current.style.opacity = '1';
+
+            setTimeout(() => {
+              if (currentRef.current) {
+                currentRef.current.pause();
+                currentRef.current.currentTime = 0;
+              }
+              setActiveVideo(activeVideo === 1 ? 2 : 1);
+              setLoaded(true);
+            }, 300);
+          }).catch(err => console.error("Video play error:", err));
+        };
+      }
     }
-  }, [currentScenario, videos, currentVideoSrc]);
+  }, [currentScenario, videos, activeVideo]);
 
-  // 💚 HEALTH SYSTEM - Update health based on market changes
   useEffect(() => {
     setHealth(prev => {
       const newHealth = { ...prev };
 
-      // SOL health changes
       if (marketData.sol.change24h > 2) {
-        // Pumping - heal
         newHealth.sol = Math.min(100, prev.sol + 5);
       } else if (marketData.sol.change24h < -2) {
-        // Dumping - take damage
         const damage = Math.abs(marketData.sol.change24h) * 2;
         newHealth.sol = Math.max(0, prev.sol - damage);
         setLastDamage(ld => ({ ...ld, sol: Date.now() }));
       }
 
-      // BNB health changes
       if (marketData.bnb.change24h > 2) {
-        // Pumping - heal
         newHealth.bnb = Math.min(100, prev.bnb + 5);
       } else if (marketData.bnb.change24h < -2) {
-        // Dumping - take damage
         const damage = Math.abs(marketData.bnb.change24h) * 2;
         newHealth.bnb = Math.max(0, prev.bnb - damage);
         setLastDamage(ld => ({ ...ld, bnb: Date.now() }));
@@ -648,18 +607,15 @@ export default function ArenaFrame({
     });
   }, [marketData]);
 
-  // 🔴 RED FLASH when taking damage
   const isFlashing = (
       (Date.now() - lastDamage.sol < 300 && health.sol > 0) ||
       (Date.now() - lastDamage.bnb < 300 && health.bnb > 0)
   );
 
-  // 🎮 KEYBOARD SHORTCUTS FOR TESTING
   useEffect(() => {
     if (!testingMode) return;
 
     const handleKeyPress = (e) => {
-      // Ignore if typing in input
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
       const keyMap = {
@@ -670,13 +626,11 @@ export default function ArenaFrame({
         '5': 'solDump',
         '6': 'bnbDump',
         '7': 'bothDump',
-        // Market testing (only local mode)
         'q': () => !syncMode && setMarketData(prev => ({ ...prev, sol: { ...prev.sol, change24h: 8.5 } })),
         'w': () => !syncMode && setMarketData(prev => ({ ...prev, bnb: { ...prev.bnb, change24h: 6.2 } })),
         'a': () => !syncMode && setMarketData(prev => ({ ...prev, sol: { ...prev.sol, change24h: -5.3 } })),
         's': () => !syncMode && setMarketData(prev => ({ ...prev, bnb: { ...prev.bnb, change24h: -4.1 } })),
         'r': () => !syncMode && setMarketData({ sol: { price: 0, change24h: 0 }, bnb: { price: 0, change24h: 0 } }),
-        // Health reset
         ' ': () => {
           if (syncMode && socketRef.current) {
             socketRef.current.emit('reset_health');
@@ -708,7 +662,6 @@ export default function ArenaFrame({
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [testingMode, handleScenarioChange, setMarketData, syncMode]);
 
-  // Odredi da li je aktivan scenario za screen shake
   const shouldShake = currentScenario.includes('Pump') || currentScenario.includes('Dump');
   const shakeIntensity = currentScenario.includes('both') ? 'intense' : 'normal';
 
@@ -892,7 +845,6 @@ export default function ArenaFrame({
           )}
         </div>
 
-        {/* 🔴 DAMAGE FLASH OVERLAY */}
         {isFlashing && (
             <div
                 className="absolute inset-0 bg-red-600 pointer-events-none z-40 animate-ping"
@@ -904,16 +856,13 @@ export default function ArenaFrame({
             />
         )}
 
-        {/* 🎮 PIXEL ART TOP BAR */}
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
           <div className="relative pixel-font">
-            {/* Pixel border */}
             <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 via-red-500 to-yellow-400" style={{
               clipPath: 'polygon(0 0, 4px 0, 4px 4px, calc(100% - 4px) 4px, calc(100% - 4px) 0, 100% 0, 100% 4px, 100% calc(100% - 4px), 100% 100%, calc(100% - 4px) 100%, calc(100% - 4px) calc(100% - 4px), 4px calc(100% - 4px), 4px 100%, 0 100%, 0 calc(100% - 4px), 0 4px)'
             }} />
 
             <div className="relative flex items-center gap-3 px-6 py-3 bg-black border-4 border-gray-800 scanlines">
-              {/* Sync mode indicator */}
               {syncMode && (
                   <>
                     <div className={cls(
@@ -938,7 +887,6 @@ export default function ArenaFrame({
                   </>
               )}
 
-              {/* Testing mode indicator */}
               {testingMode && (
                   <>
                     <div className="w-3 h-3 bg-yellow-500" style={{ animation: 'blink 0.5s infinite', imageRendering: 'pixelated' }} />
@@ -949,7 +897,6 @@ export default function ArenaFrame({
                   </>
               )}
 
-              {/* Blinking dot */}
               <div className="w-3 h-3 bg-red-500" style={{ animation: 'blink 1s infinite', imageRendering: 'pixelated' }} />
 
               <span className="text-[10px] text-yellow-400 tracking-widest">
@@ -998,7 +945,6 @@ export default function ArenaFrame({
           </div>
         </div>
 
-        {/* 💚 HEALTH BARS */}
         <div className="absolute top-20 left-6 z-20">
           <HealthBar
               health={health.sol}
@@ -1032,10 +978,8 @@ export default function ArenaFrame({
           />
         </div>
 
-        {/* 🎮 PIXEL ART VIDEO FRAME */}
         <div className="relative z-10" style={{ aspectRatio: aspect, width: fullHeight ? "auto" : "min(92vw, 1100px)", height: fullHeight ? "calc(100vh - 180px)" : undefined, maxHeight: fullHeight ? "calc(100vh - 180px)" : undefined, maxWidth: "min(92vw, 1600px)" }}>
           <div className="relative">
-            {/* Arcade machine frame */}
             <div className="absolute -inset-8 bg-gradient-to-b from-gray-800 via-gray-900 to-black border-8 border-gray-700 scanlines"
                  style={{
                    boxShadow: 'inset 0 4px 0 rgba(255,255,255,0.1), inset 0 -4px 0 rgba(0,0,0,0.5), 0 20px 50px rgba(0,0,0,0.8)',
@@ -1043,45 +987,56 @@ export default function ArenaFrame({
                  }}
             />
 
-            {/* Inner bezel */}
             <div className="absolute -inset-2 bg-black border-4 border-gray-900" style={{ imageRendering: 'pixelated' }} />
 
-            {/* CRT Screen effect */}
             <div className={cls(
                 "relative w-full h-full overflow-hidden transition-all duration-500 scanlines",
                 "border-4 border-gray-800",
                 loaded ? "opacity-100" : "opacity-0"
             )} style={{ imageRendering: 'pixelated' }}>
+
+              {/* 🎬 VIDEO 1 - for crossfade */}
               <video
                   ref={videoRef}
-                  className="w-full h-full block pointer-events-none transition-opacity duration-300"
-                  src={currentVideoSrc}
+                  className="absolute inset-0 w-full h-full block pointer-events-none transition-opacity duration-300"
+                  src={videos.idle}
                   poster={poster}
                   playsInline
                   autoPlay
                   muted
                   preload="auto"
-                  onLoadedData={() => setLoaded(true)}
                   onEnded={handleVideoEnded}
-                  onError={(e) => {
-                    console.error(`❌ Video error for ${currentScenario}:`, e);
-                    if (currentScenario.includes("Back")) {
-                      console.warn("Back video missing, skipping to idle");
-                      setCurrentScenario("idle");
-                      setIsTransitioning(false);
-                    }
+                  style={{
+                    imageRendering: 'pixelated',
+                    opacity: activeVideo === 1 ? 1 : 0,
+                    zIndex: activeVideo === 1 ? 2 : 1
                   }}
-                  style={{ imageRendering: 'pixelated' }}
               />
 
-              {/* Scanline overlay */}
+              {/* 🎬 VIDEO 2 - for crossfade */}
+              <video
+                  ref={videoRef2}
+                  className="absolute inset-0 w-full h-full block pointer-events-none transition-opacity duration-300"
+                  src={videos.idle}
+                  poster={poster}
+                  playsInline
+                  autoPlay
+                  muted
+                  preload="auto"
+                  onEnded={handleVideoEnded}
+                  style={{
+                    imageRendering: 'pixelated',
+                    opacity: activeVideo === 2 ? 1 : 0,
+                    zIndex: activeVideo === 2 ? 2 : 1
+                  }}
+              />
+
               <div className="absolute inset-0 pointer-events-none" style={{
                 background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 2px, transparent 2px, transparent 4px)',
                 zIndex: 10
               }} />
             </div>
 
-            {/* 🎮 PIXEL ART TRANSITION INDICATORS */}
             {pendingScenario && (
                 <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 pixel-font">
                   <div className="relative">
@@ -1126,11 +1081,9 @@ export default function ArenaFrame({
           </div>
         </div>
 
-        {/* 🎮 PIXEL ART CRYPTO MARKET DATA */}
         {cryptoConfig.enabled && (
             <div className="absolute bottom-6 left-6 z-20 pixel-font">
               <div className="flex gap-4">
-                {/* SOL Card */}
                 <div className="relative">
                   <div className="px-4 py-3 bg-black border-4 border-gray-700 scanlines" style={{
                     boxShadow: '4px 4px 0 rgba(0,0,0,0.5)',
@@ -1164,7 +1117,6 @@ export default function ArenaFrame({
                   </div>
                 </div>
 
-                {/* BNB Card */}
                 <div className="relative">
                   <div className="px-4 py-3 bg-black border-4 border-gray-700 scanlines" style={{
                     boxShadow: '4px 4px 0 rgba(0,0,0,0.5)',
@@ -1201,7 +1153,6 @@ export default function ArenaFrame({
             </div>
         )}
 
-        {/* 🎮 PIXEL ART CONTROL PANEL - ONLY IN TESTING MODE */}
         {testingMode && (
             <div className="absolute bottom-6 right-6 z-30 pixel-font">
               <div className="relative">
@@ -1210,7 +1161,6 @@ export default function ArenaFrame({
                   boxShadow: '8px 8px 0 rgba(0,0,0,0.5)',
                   imageRendering: 'pixelated'
                 }}>
-                  {/* Header */}
                   <div className="px-4 py-2 bg-gray-800 border-b-4 border-gray-700 flex items-center justify-between">
                 <span className="text-[8px] text-yellow-400 tracking-wider">
                   🧪 TEST MODE
@@ -1222,7 +1172,6 @@ export default function ArenaFrame({
                   </div>
 
                   <div className="p-3">
-                    {/* Status */}
                     {isTransitioning && (
                         <div className="px-2 py-2 mb-2 bg-red-900 border-2 border-red-500" style={{ animation: 'blink 0.5s infinite' }}>
                           <div className="flex items-center gap-2">
@@ -1232,7 +1181,6 @@ export default function ArenaFrame({
                         </div>
                     )}
 
-                    {/* Scenario Buttons */}
                     <div className="flex flex-col gap-2">
                       {[
                         { key: "idle", label: "IDLE", icon: "▣", shortcut: "1" },
@@ -1278,7 +1226,6 @@ export default function ArenaFrame({
                       })}
                     </div>
 
-                    {/* Footer Stats */}
                     <div className="mt-3 pt-2 border-t-2 border-gray-800">
                       <div className="flex items-center justify-between text-[7px]">
                         <span className="text-gray-500">VID</span>
@@ -1288,7 +1235,6 @@ export default function ArenaFrame({
                       </div>
                     </div>
 
-                    {/* MARKET TEST */}
                     <div className="mt-3 pt-2 border-t-2 border-gray-800">
                       <div className="text-[7px] text-gray-500 mb-2">
                         MARKET {syncMode && '(SERVER)'}
@@ -1353,7 +1299,6 @@ export default function ArenaFrame({
                       )}
                     </div>
 
-                    {/* KEYBOARD SHORTCUTS INFO */}
                     <div className="mt-3 pt-2 border-t-2 border-gray-800">
                       <div className="text-[6px] text-gray-500 leading-relaxed">
                         <div className="mb-1">⌨️ SHORTCUTS:</div>
@@ -1365,7 +1310,6 @@ export default function ArenaFrame({
                       </div>
                     </div>
 
-                    {/* HEALTH CONTROLS */}
                     <div className="mt-3 pt-2 border-t-2 border-gray-800">
                       <div className="text-[7px] text-gray-500 mb-2">HEALTH</div>
                       <div className="grid grid-cols-2 gap-1 mb-1">

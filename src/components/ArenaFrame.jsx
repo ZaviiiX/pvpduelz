@@ -324,7 +324,7 @@ export default function ArenaFrame({
                                      fullHeight = true,
                                      testingMode = true, // 🧪 SET TO FALSE FOR PRODUCTION
                                      syncMode = true, // 🔄 FULL SYNC MODE
-                                     serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3001",// 🌐 WebSocket server URL
+                                     serverUrl = "https://arena-server-gh2h.onrender.com",// 🌐 WebSocket server URL
                                      videos = {
                                        idle: "/videos/solana-vs-bnb.mp4",
                                        solPump: "/videos/sol-winning.mp4",

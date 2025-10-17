@@ -10,15 +10,14 @@ const server = http.createServer(app);
 const io = socketIO(server, {
     cors: {
         origin: [
-            "https://arena-frontend.onrender.com",
-            "https://pvpduelz.onrender.com", // Dodaj i ovo ako je drugi URL
+            "https://arena-frontend-xwmh.onrender.com",
+            "https://arena-server-gh2h.onrender.com",
             "http://localhost:5173"
         ],
         methods: ["GET", "POST"],
         credentials: true
     }
 });
-
 app.use(cors());
 
 // 🌐 GLOBAL STATE

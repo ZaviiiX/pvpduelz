@@ -1053,14 +1053,14 @@ export default function ArenaFrame({
                 loaded ? "opacity-100" : "opacity-0"
             )} style={{ imageRendering: 'pixelated' }}>
               <video
-                  key={currentScenario}
                   ref={videoRef}
-                  className="w-full h-full block pointer-events-none"
+                  className="w-full h-full block pointer-events-none transition-opacity duration-300"
                   src={currentVideoSrc}
                   poster={poster}
                   playsInline
                   autoPlay
                   muted
+                  preload="auto"
                   onLoadedData={() => setLoaded(true)}
                   onEnded={handleVideoEnded}
                   onError={(e) => {

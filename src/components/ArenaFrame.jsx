@@ -55,16 +55,12 @@ function HealthBar({ health, maxHealth = 100, side = "left", label = "PLAYER", l
               }}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-black/20" />
-            <div className="absolute inset-0" style={{
-              backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(0,0,0,0.2) 8px, rgba(0,0,0,0.2) 10px)',
-            }} />
           </div>
 
           <div className={cls(
               "absolute inset-0 flex items-center justify-center text-white text-[12px] font-black",
-              "drop-shadow-[2px_2px_0_rgba(0,0,0,1)]",
               isCritical && "animate-pulse"
-          )} style={{ textShadow: '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' }}>
+          )} style={{ textShadow: '2px 2px 0 #000' }}>
             {Math.round(health)}
           </div>
 
@@ -78,11 +74,8 @@ function HealthBar({ health, maxHealth = 100, side = "left", label = "PLAYER", l
   );
 }
 
-function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinning = false, isLosing = false, marketChange = 0 }) {
-  const changeIntensity = Math.min(Math.abs(marketChange) / 10, 1);
+function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, marketChange = 0 }) {
   const isMoving = Math.abs(marketChange) > 0.5;
-  const isPumping = marketChange > 2;
-  const isDumping = marketChange < -2;
 
   return (
       <div className="relative">
@@ -98,32 +91,22 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
 
         <div className={cls(
             "relative animate-float transition-all duration-500",
-            isActive && 'scale-110',
-            isPumping && 'scale-125',
-            isDumping && 'scale-95'
+            isActive && 'scale-110'
         )}>
           <img
               src={`/images/${label.toLowerCase()}_logo.png`}
-              className="w-20 h-20 drop-shadow-[0_0_10px_rgba(0,0,0,0.6)] transition-all duration-500"
-              style={{
-                filter: `contrast(1.05) ${isActive ? 'brightness(1.2)' : ''} ${isPumping ? 'brightness(1.4) saturate(1.5)' : ''} ${isDumping ? 'brightness(0.7) saturate(0.5)' : ''}`,
-              }}
+              className="w-20 h-20 drop-shadow-[0_0_10px_rgba(0,0,0,0.6)]"
           />
         </div>
 
         {isMoving && (
             <div className={cls(
-                "absolute -bottom-8 left-1/2 -translate-x-1/2 px-3 py-1 font-bold text-[8px] pixel-font",
-                "border-2 transition-all duration-300",
+                "absolute -bottom-8 left-1/2 -translate-x-1/2 px-3 py-1 font-bold text-[8px] pixel-font border-2",
                 marketChange > 0
                     ? "bg-green-500 text-black border-green-700"
                     : "bg-red-500 text-white border-red-700"
             )}
-                 style={{
-                   boxShadow: '2px 2px 0 rgba(0,0,0,0.5)',
-                   animation: 'blink 1s infinite',
-                   imageRendering: 'pixelated'
-                 }}>
+                 style={{ boxShadow: '2px 2px 0 rgba(0,0,0,0.5)' }}>
               {marketChange > 0 ? '+' : ''}{marketChange.toFixed(1)}%
             </div>
         )}
@@ -132,7 +115,6 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, isWinn
 }
 
 export default function ArenaFrame({
-                                     poster,
                                      aspect = "16/9",
                                      leftToken = { label: "SOLANA", tone: "#14F195" },
                                      rightToken = { label: "BNB", tone: "#F0B90B" },
@@ -155,59 +137,47 @@ export default function ArenaFrame({
                                        bnbBack: "/videos/bnb-back-to-stance.mp4",
                                        bothBack: "/videos/both-back-to-stance.mp4",
                                      },
-                                     cryptoConfig = {
-                                       enabled: false,
-                                       solanaTokenAddress: "",
-                                       bnbTokenAddress: "",
-                                       checkInterval: 30000,
-                                       pumpThreshold: 5,
-                                       dumpThreshold: -5,
-                                     },
                                    }) {
-  // 🎬 SINGLE VIDEO REF
-  const videoRef = useRef(null);
+  // 🎬 DUAL VIDEO REFS - for smooth crossfade
+  const video1Ref = useRef(null);
+  const video2Ref = useRef(null);
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0); // 0 or 1
 
   const [arenaLoaded, setArenaLoaded] = useState(true);
   const [currentScenario, setCurrentScenario] = useState("idle");
   const [pendingScenario, setPendingScenario] = useState(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const lastScenarioChangeRef = useRef(0);
-  const isLoadingRef = useRef(false);
   const currentScenarioRef = useRef("idle");
+
+  const [health, setHealth] = useState({ sol: 100, bnb: 100 });
+  const [lastDamage, setLastDamage] = useState({ sol: 0, bnb: 0 });
   const [marketData, setMarketData] = useState({
     sol: { price: 0, change24h: 0 },
     bnb: { price: 0, change24h: 0 },
-  });
-
-  const [health, setHealth] = useState({
-    sol: 100,
-    bnb: 100,
-  });
-  const [lastDamage, setLastDamage] = useState({
-    sol: 0,
-    bnb: 0,
   });
 
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [userCount, setUserCount] = useState(0);
 
-  // Keep ref in sync with state
+  // Keep ref in sync
   useEffect(() => {
     currentScenarioRef.current = currentScenario;
   }, [currentScenario]);
 
-  // 🎬 Initial video setup
+  // 🎬 Initial video load
   useEffect(() => {
-    if (videoRef.current && videos.idle) {
-      videoRef.current.src = videos.idle;
-      videoRef.current.loop = true;
-      videoRef.current.load();
-      videoRef.current.play().catch(err => console.error("Initial play error:", err));
+    if (video1Ref.current && videos.idle) {
+      video1Ref.current.src = videos.idle;
+      video1Ref.current.loop = true;
+      video1Ref.current.style.opacity = '1';
+      video1Ref.current.style.zIndex = '2';
+      video1Ref.current.load();
+      video1Ref.current.play().catch(e => console.error("Initial play:", e));
     }
   }, [videos.idle]);
 
-  // 🌐 WEBSOCKET CONNECTION
+  // 🌐 WEBSOCKET
   useEffect(() => {
     if (!syncMode) return;
 
@@ -221,23 +191,21 @@ export default function ArenaFrame({
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('✅ Connected to Arena Server');
+      console.log('✅ Connected');
       setIsConnected(true);
     });
 
     socket.on('disconnect', () => {
-      console.log('❌ Disconnected from Arena Server');
+      console.log('❌ Disconnected');
       setIsConnected(false);
     });
 
     socket.on('initial_state', (state) => {
-      console.log('📦 Received initial state:', state);
       setCurrentScenario(state.currentScenario);
       setHealth(state.health);
       setMarketData(state.marketData);
       setLastDamage(state.lastDamage);
       setPendingScenario(state.pendingScenario);
-      setIsTransitioning(state.isTransitioning);
     });
 
     socket.on('state_update', (update) => {
@@ -245,92 +213,62 @@ export default function ArenaFrame({
       if (update.marketData) setMarketData(update.marketData);
       if (update.lastDamage) setLastDamage(update.lastDamage);
       if (update.pendingScenario !== undefined) setPendingScenario(update.pendingScenario);
-      if (update.isTransitioning !== undefined) setIsTransitioning(update.isTransitioning);
     });
 
     socket.on('scenario_change', ({ scenario }) => {
-      console.log('🎬 Scenario change from server:', scenario, 'current:', currentScenarioRef.current);
-
-      // Ignore if same scenario
-      if (scenario === currentScenarioRef.current) {
-        console.log('⚠️ Same scenario, ignoring');
-        return;
-      }
-
-      // Cooldown check - minimum 500ms između promjena
       const now = Date.now();
-      if (now - lastScenarioChangeRef.current < 500) {
-        console.log('⚠️ Scenario change too fast, ignoring');
+      if (scenario === currentScenarioRef.current || now - lastScenarioChangeRef.current < 500) {
         return;
       }
-
       lastScenarioChangeRef.current = now;
       setCurrentScenario(scenario);
     });
 
-    socket.on('user_count', (count) => {
-      setUserCount(count);
-    });
+    socket.on('user_count', (count) => setUserCount(count));
 
-    return () => {
-      socket.disconnect();
-    };
+    return () => socket.disconnect();
   }, [syncMode, serverUrl]);
 
-  // 🎬 VIDEO SWITCHING - SINGLE VIDEO
+  // 🎬 SMOOTH VIDEO SWITCHING - NO LOOP!
   useEffect(() => {
-    if (!currentScenario || !videoRef.current) return;
-
-    // Prevent loading if already loading
-    if (isLoadingRef.current) {
-      console.log('⚠️ Video already loading, skipping');
-      return;
-    }
-
-    console.log(`📺 Switching to: ${currentScenario}`);
-
     const videoSrc = videos[currentScenario];
-    if (!videoSrc) {
-      console.warn(`⚠️ Video not found for: ${currentScenario}`);
-      return;
-    }
+    if (!videoSrc) return;
 
-    isLoadingRef.current = true;
+    // Determine which video to use
+    const currentVideo = activeVideoIndex === 0 ? video1Ref.current : video2Ref.current;
+    const nextVideo = activeVideoIndex === 0 ? video2Ref.current : video1Ref.current;
 
-    // Set video properties
-    videoRef.current.src = videoSrc;
-    videoRef.current.loop = currentScenario === "idle";
-    videoRef.current.load();
+    if (!nextVideo || !currentVideo) return;
 
-    const handleLoadedData = () => {
-      console.log(`✅ Video loaded: ${currentScenario}`);
-      isLoadingRef.current = false;
+    console.log(`🎬 Switching to ${currentScenario} using video ${activeVideoIndex === 0 ? 2 : 1}`);
 
-      videoRef.current.play()
-          .then(() => console.log(`▶️ Playing: ${currentScenario}`))
-          .catch(err => {
-            console.error("Video play error:", err);
-            isLoadingRef.current = false;
-          });
+    // Prepare next video
+    nextVideo.src = videoSrc;
+    nextVideo.loop = currentScenario === "idle";
+    nextVideo.currentTime = 0;
+    nextVideo.load();
+
+    nextVideo.onloadeddata = () => {
+      // Play next video
+      nextVideo.play().then(() => {
+        // Crossfade
+        currentVideo.style.opacity = '0';
+        currentVideo.style.zIndex = '1';
+        nextVideo.style.opacity = '1';
+        nextVideo.style.zIndex = '2';
+
+        // Switch active index
+        setActiveVideoIndex(prev => prev === 0 ? 1 : 0);
+
+        // Pause and reset old video after fade
+        setTimeout(() => {
+          currentVideo.pause();
+          currentVideo.currentTime = 0;
+        }, 500);
+      }).catch(e => console.error("Play error:", e));
     };
 
-    const handleError = (e) => {
-      console.error(`❌ Video load error for ${currentScenario}:`, e);
-      isLoadingRef.current = false;
-    };
-
-    videoRef.current.addEventListener('loadeddata', handleLoadedData);
-    videoRef.current.addEventListener('error', handleError);
-
-    // Cleanup
-    return () => {
-      if (videoRef.current) {
-        videoRef.current.removeEventListener('loadeddata', handleLoadedData);
-        videoRef.current.removeEventListener('error', handleError);
-      }
-    };
-
-  }, [currentScenario, videos]);
+  }, [currentScenario]); // ⚠️ NO activeVideoIndex here!
 
   const getTokenStatus = (token) => {
     const isSol = token.label.toLowerCase().includes('sol');
@@ -339,61 +277,34 @@ export default function ArenaFrame({
 
     return {
       isActive: isRelevantToken,
-      isWinning: scenario.includes('pump') && isRelevantToken,
-      isLosing: scenario.includes('dump') && isRelevantToken
     };
   };
 
   const handleVideoEnded = useCallback(() => {
-    console.log("✅ Video ended:", currentScenario);
-
     if (pendingScenario) {
       setCurrentScenario(pendingScenario);
       setPendingScenario(null);
-      setIsTransitioning(false);
       return;
     }
 
-    if (currentScenario === "solPump" || currentScenario === "solDump") {
-      setCurrentScenario("solBack");
+    if (currentScenario.includes("Pump") || currentScenario.includes("Dump")) {
+      const token = currentScenario.includes("sol") ? "sol" : currentScenario.includes("bnb") ? "bnb" : "both";
+      setCurrentScenario(`${token}Back`);
       return;
     }
 
-    if (currentScenario === "bnbPump" || currentScenario === "bnbDump") {
-      setCurrentScenario("bnbBack");
-      return;
-    }
-
-    if (currentScenario === "bothPump" || currentScenario === "bothDump") {
-      setCurrentScenario("bothBack");
-      return;
-    }
-
-    if (currentScenario === "solBack" || currentScenario === "bnbBack" || currentScenario === "bothBack") {
+    if (currentScenario.includes("Back")) {
       setCurrentScenario("idle");
-      setIsTransitioning(false);
-      return;
     }
-
   }, [pendingScenario, currentScenario]);
 
   const handleScenarioChange = useCallback((newScenario) => {
-    // Cooldown check
     const now = Date.now();
-    if (now - lastScenarioChangeRef.current < 500) {
-      console.log('⚠️ Scenario change too fast (manual), ignoring');
-      return;
-    }
+    if (now - lastScenarioChangeRef.current < 500) return;
 
     if (syncMode && socketRef.current && testingMode) {
-      console.log(`🌐 Emitting test scenario: ${newScenario}`);
       lastScenarioChangeRef.current = now;
       socketRef.current.emit('test_scenario', newScenario);
-      return;
-    }
-
-    if (isTransitioning || pendingScenario) {
-      console.log("⚠️ Scenario change blocked");
       return;
     }
 
@@ -401,12 +312,10 @@ export default function ArenaFrame({
 
     lastScenarioChangeRef.current = now;
     setPendingScenario(newScenario);
-    setIsTransitioning(true);
 
-    if (videoRef.current) {
-      videoRef.current.loop = false;
-    }
-  }, [currentScenario, isTransitioning, pendingScenario, syncMode, testingMode]);
+    const currentVideo = activeVideoIndex === 0 ? video1Ref.current : video2Ref.current;
+    if (currentVideo) currentVideo.loop = false;
+  }, [currentScenario, syncMode, testingMode, activeVideoIndex]);
 
   useEffect(() => {
     if (!testingMode) return;
@@ -434,11 +343,8 @@ export default function ArenaFrame({
       const action = keyMap[e.key];
       if (action) {
         e.preventDefault();
-        if (typeof action === 'function') {
-          action();
-        } else {
-          handleScenarioChange(action);
-        }
+        if (typeof action === 'function') action();
+        else handleScenarioChange(action);
       }
     };
 
@@ -465,35 +371,25 @@ export default function ArenaFrame({
           50%, 100% { opacity: 0; }
         }
         @keyframes screenShake {
-          0%, 100% { transform: translate(0, 0) rotate(0deg); }
-          10% { transform: translate(-5px, 2px) rotate(-0.5deg); }
-          20% { transform: translate(4px, -3px) rotate(0.5deg); }
-          30% { transform: translate(-3px, 4px) rotate(-0.3deg); }
-          40% { transform: translate(5px, -2px) rotate(0.4deg); }
-          50% { transform: translate(-4px, 3px) rotate(-0.3deg); }
-          60% { transform: translate(3px, -4px) rotate(0.5deg); }
-          70% { transform: translate(-5px, 2px) rotate(-0.4deg); }
-          80% { transform: translate(4px, -3px) rotate(0.3deg); }
-          90% { transform: translate(-2px, 2px) rotate(-0.2deg); }
+          0%, 100% { transform: translate(0, 0); }
+          10% { transform: translate(-5px, 2px); }
+          20% { transform: translate(4px, -3px); }
+          30% { transform: translate(-3px, 4px); }
+          40% { transform: translate(5px, -2px); }
+          50% { transform: translate(-4px, 3px); }
+          60% { transform: translate(3px, -4px); }
+          70% { transform: translate(-5px, 2px); }
+          80% { transform: translate(4px, -3px); }
+          90% { transform: translate(-2px, 2px); }
         }
         .animate-float { animation: float 3s ease-in-out infinite; }
         .animate-screen-shake { animation: screenShake 0.5s ease-in-out infinite; }
         .pixel-font { font-family: 'Press Start 2P', monospace; }
-        .scanlines {
-          position: relative;
-          overflow: hidden;
-        }
         .scanlines::before {
           content: '';
           position: absolute;
           inset: 0;
-          background: repeating-linear-gradient(
-            0deg,
-            rgba(0, 0, 0, 0.15),
-            rgba(0, 0, 0, 0.15) 1px,
-            transparent 1px,
-            transparent 2px
-          );
+          background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.15) 1px, transparent 1px, transparent 2px);
           pointer-events: none;
           z-index: 100;
         }
@@ -504,83 +400,49 @@ export default function ArenaFrame({
               <>
                 <img
                     src={arenaImage}
-                    alt="arena background"
-                    className="absolute inset-0 w-full h-full object-center select-none pointer-events-none blur-xl"
+                    alt="arena"
+                    className="absolute inset-0 w-full h-full object-center blur-xl"
                     style={{ objectFit: arenaFit, opacity: arenaOpacity * 0.5 }}
                     onError={() => setArenaLoaded(false)}
                 />
                 <div className="absolute inset-0" style={{ boxShadow: "inset 0 -80px 150px rgba(0,0,0,0.5)" }} />
               </>
           ) : (
-              <div className="absolute inset-0" style={{ background: '#0f1318' }} />
+              <div className="absolute inset-0 bg-[#0f1318]" />
           )}
         </div>
 
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
-          <div className="relative pixel-font">
-            <div className="relative flex items-center gap-3 px-6 py-3 bg-black border-4 border-gray-800 scanlines">
-              {syncMode && (
-                  <>
-                    <div className={cls(
-                        "w-3 h-3",
-                        isConnected ? "bg-green-500" : "bg-red-500"
-                    )} style={{
-                      animation: 'blink 2s infinite'
-                    }} />
-                    <span className={cls(
-                        "text-[10px] tracking-widest",
-                        isConnected ? "text-green-400" : "text-red-400"
-                    )}>
-                  {isConnected ? '🌐 SYNC' : '⚠️ OFFLINE'}
-                </span>
-                    {isConnected && userCount > 0 && (
-                        <span className="text-[8px] text-gray-500">
-                    [{userCount} 👥]
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pixel-font">
+          <div className="relative flex items-center gap-3 px-6 py-3 bg-black border-4 border-gray-800">
+            {syncMode && (
+                <>
+                  <div className={cls("w-3 h-3", isConnected ? "bg-green-500" : "bg-red-500")}
+                       style={{ animation: 'blink 2s infinite' }} />
+                  <span className={cls("text-[10px]", isConnected ? "text-green-400" : "text-red-400")}>
+                    {isConnected ? '🌐 SYNC' : '⚠️ OFFLINE'}
                   </span>
-                    )}
-                    <div className="w-1 h-4 bg-gray-600" />
-                  </>
-              )}
-
-              <div className="w-3 h-3 bg-red-500" style={{ animation: 'blink 1s infinite' }} />
-              <span className="text-[10px] text-yellow-400 tracking-widest">
-              CRYPTO ARENA
-            </span>
-            </div>
+                  {isConnected && userCount > 0 && <span className="text-[8px] text-gray-500">[{userCount} 👥]</span>}
+                  <div className="w-1 h-4 bg-gray-600" />
+                </>
+            )}
+            <div className="w-3 h-3 bg-red-500" style={{ animation: 'blink 1s infinite' }} />
+            <span className="text-[10px] text-yellow-400">CRYPTO ARENA</span>
           </div>
         </div>
 
         <div className="absolute top-20 left-6 z-20">
-          <HealthBar
-              health={health.sol}
-              side="left"
-              label="SOLANA"
-              lastDamage={lastDamage.sol}
-          />
+          <HealthBar health={health.sol} side="left" label="SOLANA" lastDamage={lastDamage.sol} />
         </div>
 
         <div className="absolute top-20 right-6 z-20">
-          <HealthBar
-              health={health.bnb}
-              side="right"
-              label="BNB"
-              lastDamage={lastDamage.bnb}
-          />
+          <HealthBar health={health.bnb} side="right" label="BNB" lastDamage={lastDamage.bnb} />
         </div>
 
         <div className="absolute left-6 top-1/2 -translate-y-1/2 hidden sm:block z-20">
-          <TokenShield
-              {...leftToken}
-              {...getTokenStatus(leftToken)}
-              marketChange={marketData.sol.change24h}
-          />
+          <TokenShield {...leftToken} {...getTokenStatus(leftToken)} marketChange={marketData.sol.change24h} />
         </div>
         <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden sm:block z-20">
-          <TokenShield
-              {...rightToken}
-              {...getTokenStatus(rightToken)}
-              marketChange={marketData.bnb.change24h}
-          />
+          <TokenShield {...rightToken} {...getTokenStatus(rightToken)} marketChange={marketData.bnb.change24h} />
         </div>
 
         <div className="relative z-10" style={{
@@ -589,25 +451,40 @@ export default function ArenaFrame({
           height: fullHeight ? "calc(100vh - 180px)" : undefined
         }}>
           <div className="relative">
-            <div className="absolute -inset-8 bg-gradient-to-b from-gray-800 via-gray-900 to-black border-8 border-gray-700 scanlines"
-                 style={{
-                   boxShadow: 'inset 0 4px 0 rgba(255,255,255,0.1), 0 20px 50px rgba(0,0,0,0.8)'
-                 }}
+            <div className="absolute -inset-8 bg-gradient-to-b from-gray-800 via-gray-900 to-black border-8 border-gray-700"
+                 style={{ boxShadow: 'inset 0 4px 0 rgba(255,255,255,0.1), 0 20px 50px rgba(0,0,0,0.8)' }}
             />
 
             <div className="absolute -inset-2 bg-black border-4 border-gray-900" />
 
-            <div className="relative w-full h-full overflow-hidden scanlines border-4 border-gray-800">
+            <div className="relative w-full h-full overflow-hidden border-4 border-gray-800">
+              {/* 🎬 VIDEO 1 */}
               <video
-                  ref={videoRef}
-                  className="w-full h-full block object-cover"
+                  ref={video1Ref}
+                  className="absolute inset-0 w-full h-full block object-cover"
                   playsInline
-                  autoPlay
                   muted
-                  loop
+                  preload="auto"
                   onEnded={handleVideoEnded}
                   style={{
-                    imageRendering: 'pixelated'
+                    transition: 'opacity 0.5s ease-in-out',
+                    opacity: 0,
+                    zIndex: 1
+                  }}
+              />
+
+              {/* 🎬 VIDEO 2 */}
+              <video
+                  ref={video2Ref}
+                  className="absolute inset-0 w-full h-full block object-cover"
+                  playsInline
+                  muted
+                  preload="auto"
+                  onEnded={handleVideoEnded}
+                  style={{
+                    transition: 'opacity 0.5s ease-in-out',
+                    opacity: 0,
+                    zIndex: 1
                   }}
               />
 
@@ -621,46 +498,31 @@ export default function ArenaFrame({
 
         {testingMode && (
             <div className="absolute bottom-6 right-6 z-30 pixel-font">
-              <div className="bg-black border-4 border-gray-700 scanlines p-3" style={{
-                minWidth: '200px',
-                boxShadow: '8px 8px 0 rgba(0,0,0,0.5)'
-              }}>
-                <div className="text-[8px] text-yellow-400 mb-3">🧪 TEST MODE</div>
-
+              <div className="bg-black border-4 border-gray-700 p-3" style={{ minWidth: '200px' }}>
+                <div className="text-[8px] text-yellow-400 mb-3">🧪 TEST</div>
                 <div className="flex flex-col gap-2">
                   {[
-                    { key: "idle", label: "IDLE", shortcut: "1" },
-                    { key: "solPump", label: "SOL+", shortcut: "2" },
-                    { key: "bnbPump", label: "BNB+", shortcut: "3" },
-                    { key: "bothPump", label: "BOTH+", shortcut: "4" },
-                    { key: "solDump", label: "SOL-", shortcut: "5" },
-                    { key: "bnbDump", label: "BNB-", shortcut: "6" },
-                    { key: "bothDump", label: "BOTH-", shortcut: "7" },
-                  ].map(({ key, label, shortcut }) => {
-                    const isActive = currentScenario === key;
-
-                    return (
-                        <button
-                            key={key}
-                            onClick={() => handleScenarioChange(key)}
-                            className={cls(
-                                "px-3 py-2 text-[8px] border-2",
-                                isActive
-                                    ? "bg-yellow-500 text-black border-yellow-700"
-                                    : "bg-gray-800 text-white border-gray-600 hover:bg-gray-700"
-                            )}
-                        >
-                          {label} [{shortcut}]
-                        </button>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-3 pt-3 border-t-2 border-gray-800">
-                  <div className="text-[6px] text-gray-500">
-                    <div>1-7: Scenarios</div>
-                    <div>SPACE: Reset HP</div>
-                  </div>
+                    { key: "idle", label: "IDLE", s: "1" },
+                    { key: "solPump", label: "SOL+", s: "2" },
+                    { key: "bnbPump", label: "BNB+", s: "3" },
+                    { key: "bothPump", label: "BOTH+", s: "4" },
+                    { key: "solDump", label: "SOL-", s: "5" },
+                    { key: "bnbDump", label: "BNB-", s: "6" },
+                    { key: "bothDump", label: "BOTH-", s: "7" },
+                  ].map(({ key, label, s }) => (
+                      <button
+                          key={key}
+                          onClick={() => handleScenarioChange(key)}
+                          className={cls(
+                              "px-3 py-2 text-[8px] border-2",
+                              currentScenario === key
+                                  ? "bg-yellow-500 text-black border-yellow-700"
+                                  : "bg-gray-800 text-white border-gray-600"
+                          )}
+                      >
+                        {label} [{s}]
+                      </button>
+                  ))}
                 </div>
               </div>
             </div>

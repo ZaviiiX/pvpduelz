@@ -581,10 +581,10 @@ export default function ArenaFrame({
   // 🎬 DUAL VIDEO SWITCHING WITH CROSSFADE
   // 🎬 DUAL VIDEO SWITCHING WITH CROSSFADE
   // 🎬 DUAL VIDEO SWITCHING WITH CROSSFADE
+  // 🎬 DUAL VIDEO SWITCHING WITH CROSSFADE
   useEffect(() => {
     if (currentScenario) {
       console.log(`📺 Loading new video: ${currentScenario}`);
-      console.log('Current activeVideo:', activeVideo);
 
       const videoSrc = videos[currentScenario];
       if (!videoSrc) {
@@ -596,63 +596,57 @@ export default function ArenaFrame({
         return;
       }
 
-      console.log(`🎥 Video source: ${videoSrc}`);
+      const currentRef = activeVideo === 1 ? videoRef : videoRef2;
+      const nextRef = activeVideo === 1 ? videoRef2 : videoRef;
+      const nextActiveValue = activeVideo === 1 ? 2 : 1;
 
-      // Determine which video to switch to
-      setActiveVideo(prev => {
-        const nextActive = prev === 1 ? 2 : 1;
-        const currentRef = prev === 1 ? videoRef : videoRef2;
-        const nextRef = prev === 1 ? videoRef2 : videoRef;
+      console.log(`🔄 Switching from video ${activeVideo} to video ${nextActiveValue}`);
 
-        console.log(`🔄 Switching from video ${prev} to video ${nextActive}`);
-        console.log('nextRef.current:', nextRef.current);
+      if (nextRef.current) {
+        nextRef.current.src = videoSrc;
+        nextRef.current.loop = currentScenario === "idle";
+        nextRef.current.load();
 
-        if (nextRef.current) {
-          console.log(`📂 Setting src on video ${nextActive}:`, videoSrc);
-          nextRef.current.src = videoSrc;
-          nextRef.current.loop = currentScenario === "idle";
-          nextRef.current.load();
+        nextRef.current.onloadeddata = () => {
+          console.log(`✅ Video ${nextActiveValue} loaded`);
 
-          nextRef.current.onloadeddata = () => {
-            console.log(`✅ Video ${nextActive} loaded`);
+          nextRef.current.play().then(() => {
+            console.log(`▶️ Playing video ${nextActiveValue}: ${currentScenario}`);
 
-            nextRef.current.play().then(() => {
-              console.log(`▶️ Playing video ${nextActive}: ${currentScenario}`);
-              console.log(`Current opacity - video ${prev}: ${currentRef.current?.style.opacity}, video ${nextActive}: ${nextRef.current.style.opacity}`);
+            // 🔧 DIRECT STYLE MANIPULATION - bypassing React
+            if (currentRef.current) {
+              console.log(`👻 Fading out video ${activeVideo}`);
+              currentRef.current.style.opacity = '0';
+              currentRef.current.style.zIndex = '10';
+            }
 
-              // Crossfade
+            console.log(`✨ Fading in video ${nextActiveValue}`);
+            nextRef.current.style.opacity = '1';
+            nextRef.current.style.zIndex = '20';
+
+            // Update state AFTER styles are set
+            setActiveVideo(nextActiveValue);
+
+            // Cleanup old video after fade
+            setTimeout(() => {
               if (currentRef.current) {
-                console.log(`👻 Fading out video ${prev}`);
-                currentRef.current.style.opacity = '0';
+                console.log(`⏹️ Pausing and resetting video ${activeVideo}`);
+                currentRef.current.pause();
+                currentRef.current.currentTime = 0;
               }
-              console.log(`✨ Fading in video ${nextActive}`);
-              nextRef.current.style.opacity = '1';
+              setLoaded(true);
+            }, 300);
+          }).catch(err => {
+            console.error(`❌ Video ${nextActiveValue} play error:`, err);
+          });
+        };
 
-              // Cleanup old video after fade
-              setTimeout(() => {
-                if (currentRef.current) {
-                  console.log(`⏹️ Pausing and resetting video ${prev}`);
-                  currentRef.current.pause();
-                  currentRef.current.currentTime = 0;
-                }
-                setLoaded(true);
-              }, 300);
-            }).catch(err => {
-              console.error(`❌ Video ${nextActive} play error:`, err);
-            });
-          };
-
-          nextRef.current.onerror = (e) => {
-            console.error(`❌ Video ${nextActive} load error:`, e);
-          };
-        } else {
-          console.error(`❌ nextRef.current is null for video ${nextActive}`);
-        }
-
-        return nextActive;
-      });
+        nextRef.current.onerror = (e) => {
+          console.error(`❌ Video ${nextActiveValue} load error:`, e);
+        };
+      }
     }
-  }, [currentScenario, videos]);
+  }, [currentScenario, videos, activeVideo]);
 
   useEffect(() => {
     setHealth(prev => {

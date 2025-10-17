@@ -351,6 +351,16 @@ export default function ArenaFrame({
   const [userCount, setUserCount] = useState(0);
   const [serverTime, setServerTime] = useState(0);
 
+  // 🎬 Initial video load
+  useEffect(() => {
+    if (videoRef.current && videos.idle) {
+      videoRef.current.src = videos.idle;
+      videoRef.current.loop = true;
+      videoRef.current.load();
+      videoRef.current.play().catch(err => console.error("Initial video play error:", err));
+    }
+  }, []); // Run only once on mount
+
   // 🌐 WEBSOCKET CONNECTION
   useEffect(() => {
     if (!syncMode) return;
@@ -1016,6 +1026,7 @@ export default function ArenaFrame({
             )} style={{ imageRendering: 'pixelated' }}>
 
               {/* 🎬 VIDEO 1 - for crossfade */}
+              {/* 🎬 VIDEO 1 - for crossfade */}
               <video
                   ref={videoRef}
                   className="absolute inset-0 w-full h-full block pointer-events-none transition-opacity duration-300"
@@ -1025,6 +1036,7 @@ export default function ArenaFrame({
                   autoPlay
                   muted
                   preload="auto"
+                  onLoadedData={() => setLoaded(true)}
                   onEnded={handleVideoEnded}
                   style={{
                     imageRendering: 'pixelated',
@@ -1037,10 +1049,7 @@ export default function ArenaFrame({
               <video
                   ref={videoRef2}
                   className="absolute inset-0 w-full h-full block pointer-events-none transition-opacity duration-300"
-                  src={videos.idle}
-                  poster={poster}
                   playsInline
-                  autoPlay
                   muted
                   preload="auto"
                   onEnded={handleVideoEnded}

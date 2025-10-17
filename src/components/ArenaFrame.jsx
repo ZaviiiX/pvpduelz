@@ -1061,9 +1061,9 @@ export default function ArenaFrame({
             <div className="absolute -inset-2 bg-black border-4 border-gray-900" style={{ imageRendering: 'pixelated' }} />
 
             <div className={cls(
-                "relative w-full h-full overflow-hidden transition-all duration-500 scanlines",
-                "border-4 border-gray-800",
-                loaded ? "opacity-100" : "opacity-0"
+                "relative w-full h-full overflow-hidden scanlines",
+                "border-4 border-gray-800"
+                // ✅ UKLONJEN OPACITY - videi sami kontrolišu fade
             )} style={{ imageRendering: 'pixelated' }}>
 
               {/* 🎬 VIDEO 1 - for crossfade */}
@@ -1448,30 +1448,40 @@ export default function ArenaFrame({
                   <div className="p-3 text-[7px] text-white space-y-1">
                     <div>activeVideo: {activeVideo}</div>
                     <div>currentScenario: {currentScenario}</div>
-                    <div>loaded: {loaded ? 'true' : 'false'}</div>
+                    <div>loaded: {loaded ? '✅ true' : '❌ false'}</div>
                     <div>isTransitioning: {isTransitioning ? 'true' : 'false'}</div>
+                    <div className="text-yellow-400">⚠️ LOADED state controls container!</div>
 
                     <div className="mt-2 pt-2 border-t border-red-700">
                       <div className="font-bold text-red-400 mb-1">VIDEO 1:</div>
                       <div>ref: {videoRef.current ? '✅' : '❌'}</div>
-                      <div>src: {videoRef.current?.src ? '✅' : '❌'}</div>
+                      <div>src: {videoRef.current?.src?.split('/').pop() || 'none'}</div>
                       <div>opacity: {videoRef.current?.style.opacity || 'none'}</div>
-                      <div>paused: {videoRef.current?.paused ? 'true' : 'false'}</div>
-                      <div>currentTime: {videoRef.current?.currentTime.toFixed(2) || '0'}</div>
+                      <div>zIndex: {videoRef.current?.style.zIndex || 'none'}</div>
+                      <div>paused: {videoRef.current?.paused ? '⏸️ true' : '▶️ false'}</div>
+                      <div>time: {videoRef.current?.currentTime.toFixed(2) || '0'}/{videoRef.current?.duration?.toFixed(2) || '?'}</div>
                     </div>
 
                     <div className="mt-2 pt-2 border-t border-red-700">
                       <div className="font-bold text-red-400 mb-1">VIDEO 2:</div>
                       <div>ref: {videoRef2.current ? '✅' : '❌'}</div>
-                      <div>src: {videoRef2.current?.src ? '✅' : '❌'}</div>
+                      <div>src: {videoRef2.current?.src?.split('/').pop() || 'none'}</div>
                       <div>opacity: {videoRef2.current?.style.opacity || 'none'}</div>
-                      <div>paused: {videoRef2.current?.paused ? 'true' : 'false'}</div>
-                      <div>currentTime: {videoRef2.current?.currentTime.toFixed(2) || '0'}</div>
+                      <div>zIndex: {videoRef2.current?.style.zIndex || 'none'}</div>
+                      <div>paused: {videoRef2.current?.paused ? '⏸️ true' : '▶️ false'}</div>
+                      <div>time: {videoRef2.current?.currentTime.toFixed(2) || '0'}/{videoRef2.current?.duration?.toFixed(2) || '?'}</div>
+                    </div>
+
+                    <div className="mt-2 pt-2 border-t border-red-700">
+                      <div className="font-bold text-green-400">EXPECTED:</div>
+                      <div>Video {activeVideo} should be visible (opacity: 1)</div>
+                      <div>Video {activeVideo === 1 ? 2 : 1} should be hidden (opacity: 0)</div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
         )}
       </section>
   );

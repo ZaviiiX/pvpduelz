@@ -1,17 +1,15 @@
 services:
-  # Backend WebSocket Server
   - type: web
     name: arena-server
     runtime: node
     rootDir: ./arena-server
     buildCommand: npm install --production
-    startCommand: node server.js
+    startCommand: node server.cjs
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
 
-  # Frontend React App
   - type: web
     name: arena-frontend
     runtime: static

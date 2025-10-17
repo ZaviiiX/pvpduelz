@@ -172,6 +172,9 @@ export default function ArenaFrame({
   const [currentScenario, setCurrentScenario] = useState("idle");
   const [pendingScenario, setPendingScenario] = useState(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const lastScenarioChangeRef = useRef(0);
+  const isLoadingRef = useRef(false);
+  const currentScenarioRef = useRef("idle");
   const [marketData, setMarketData] = useState({
     sol: { price: 0, change24h: 0 },
     bnb: { price: 0, change24h: 0 },
@@ -189,6 +192,11 @@ export default function ArenaFrame({
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [userCount, setUserCount] = useState(0);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    currentScenarioRef.current = currentScenario;
+  }, [currentScenario]);
 
   // 🌐 WEBSOCKET CONNECTION
   useEffect(() => {
@@ -232,7 +240,22 @@ export default function ArenaFrame({
     });
 
     socket.on('scenario_change', ({ scenario }) => {
-      console.log('🎬 Scenario change:', scenario);
+      console.log('🎬 Scenario change from server:', scenario, 'current:', currentScenarioRef.current);
+
+      // Ignore if same scenario
+      if (scenario === currentScenarioRef.current) {
+        console.log('⚠️ Same scenario, ignoring');
+        return;
+      }
+
+      // Cooldown check - minimum 500ms između promjena
+      const now = Date.now();
+      if (now - lastScenarioChangeRef.current < 500) {
+        console.log('⚠️ Scenario change too fast, ignoring');
+        return;
+      }
+
+      lastScenarioChangeRef.current = now;
       setCurrentScenario(scenario);
     });
 
@@ -249,6 +272,12 @@ export default function ArenaFrame({
   useEffect(() => {
     if (!currentScenario || !videoRef.current) return;
 
+    // Prevent loading if already loading
+    if (isLoadingRef.current) {
+      console.log('⚠️ Video already loading, skipping');
+      return;
+    }
+
     console.log(`📺 Switching to: ${currentScenario}`);
 
     const videoSrc = videos[currentScenario];
@@ -257,17 +286,43 @@ export default function ArenaFrame({
       return;
     }
 
+    // Reset loaded state
+    setLoaded(false);
+    isLoadingRef.current = true;
+
+    // Set video properties
     videoRef.current.src = videoSrc;
     videoRef.current.loop = currentScenario === "idle";
     videoRef.current.load();
 
-    videoRef.current.onloadeddata = () => {
+    const handleLoadedData = () => {
       console.log(`✅ Video loaded: ${currentScenario}`);
       setLoaded(true);
+      isLoadingRef.current = false;
 
       videoRef.current.play()
           .then(() => console.log(`▶️ Playing: ${currentScenario}`))
-          .catch(err => console.error("Video play error:", err));
+          .catch(err => {
+            console.error("Video play error:", err);
+            isLoadingRef.current = false;
+          });
+    };
+
+    const handleError = (e) => {
+      console.error(`❌ Video load error for ${currentScenario}:`, e);
+      isLoadingRef.current = false;
+      setLoaded(true); // Show video anyway
+    };
+
+    videoRef.current.addEventListener('loadeddata', handleLoadedData);
+    videoRef.current.addEventListener('error', handleError);
+
+    // Cleanup
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.removeEventListener('loadeddata', handleLoadedData);
+        videoRef.current.removeEventListener('error', handleError);
+      }
     };
 
   }, [currentScenario, videos]);
@@ -318,8 +373,16 @@ export default function ArenaFrame({
   }, [pendingScenario, currentScenario]);
 
   const handleScenarioChange = useCallback((newScenario) => {
+    // Cooldown check
+    const now = Date.now();
+    if (now - lastScenarioChangeRef.current < 500) {
+      console.log('⚠️ Scenario change too fast (manual), ignoring');
+      return;
+    }
+
     if (syncMode && socketRef.current && testingMode) {
       console.log(`🌐 Emitting test scenario: ${newScenario}`);
+      lastScenarioChangeRef.current = now;
       socketRef.current.emit('test_scenario', newScenario);
       return;
     }
@@ -331,6 +394,7 @@ export default function ArenaFrame({
 
     if (newScenario === currentScenario) return;
 
+    lastScenarioChangeRef.current = now;
     setPendingScenario(newScenario);
     setIsTransitioning(true);
 
@@ -529,6 +593,15 @@ export default function ArenaFrame({
             <div className="absolute -inset-2 bg-black border-4 border-gray-900" />
 
             <div className="relative w-full h-full overflow-hidden scanlines border-4 border-gray-800">
+              {/* Loading Indicator */}
+              {!loaded && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black z-20">
+                    <div className="pixel-font text-yellow-400 text-[10px] animate-pulse">
+                      LOADING...
+                    </div>
+                  </div>
+              )}
+
               <video
                   ref={videoRef}
                   className="w-full h-full block object-cover"
@@ -538,7 +611,9 @@ export default function ArenaFrame({
                   loop
                   onEnded={handleVideoEnded}
                   style={{
-                    imageRendering: 'pixelated'
+                    imageRendering: 'pixelated',
+                    opacity: loaded ? 1 : 0,
+                    transition: 'opacity 0.3s'
                   }}
               />
 

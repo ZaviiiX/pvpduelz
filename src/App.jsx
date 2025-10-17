@@ -16,7 +16,7 @@ export default function App() {
 
                 // 🌐 FULL SYNC - DODAJ OVO!
                 syncMode={true}
-                serverUrl="http://localhost:3001"
+
 
                 videos={{
                     idle: "/videos/solana-vs-bnb.mp4",

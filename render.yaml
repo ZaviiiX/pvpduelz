@@ -1,5 +1,3 @@
-name: crypto-arena
-
 services:
   # Backend WebSocket Server
   - type: web

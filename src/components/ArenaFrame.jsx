@@ -352,14 +352,33 @@ export default function ArenaFrame({
   const [serverTime, setServerTime] = useState(0);
 
   // 🎬 Initial video load
+  // 🎬 Initial video load
   useEffect(() => {
+    console.log('🎬 Initial video load useEffect triggered');
+    console.log('videoRef.current:', videoRef.current);
+    console.log('videos.idle:', videos.idle);
+
     if (videoRef.current && videos.idle) {
+      console.log('✅ Setting initial video src to:', videos.idle);
       videoRef.current.src = videos.idle;
       videoRef.current.loop = true;
       videoRef.current.load();
-      videoRef.current.play().catch(err => console.error("Initial video play error:", err));
+
+      videoRef.current.onloadeddata = () => {
+        console.log('📺 Initial video loaded successfully');
+        setLoaded(true);
+      };
+
+      videoRef.current.play()
+          .then(() => console.log('▶️ Initial video playing'))
+          .catch(err => console.error("❌ Initial video play error:", err));
+    } else {
+      console.error('❌ Initial video load failed:', {
+        hasRef: !!videoRef.current,
+        hasIdleVideo: !!videos.idle
+      });
     }
-  }, []); // Run only once on mount
+  }, [videos.idle]);
 
   // 🌐 WEBSOCKET CONNECTION
   useEffect(() => {
@@ -561,9 +580,11 @@ export default function ArenaFrame({
 
   // 🎬 DUAL VIDEO SWITCHING WITH CROSSFADE
   // 🎬 DUAL VIDEO SWITCHING WITH CROSSFADE
+  // 🎬 DUAL VIDEO SWITCHING WITH CROSSFADE
   useEffect(() => {
     if (currentScenario) {
       console.log(`📺 Loading new video: ${currentScenario}`);
+      console.log('Current activeVideo:', activeVideo);
 
       const videoSrc = videos[currentScenario];
       if (!videoSrc) {
@@ -575,43 +596,63 @@ export default function ArenaFrame({
         return;
       }
 
+      console.log(`🎥 Video source: ${videoSrc}`);
+
       // Determine which video to switch to
       setActiveVideo(prev => {
         const nextActive = prev === 1 ? 2 : 1;
         const currentRef = prev === 1 ? videoRef : videoRef2;
         const nextRef = prev === 1 ? videoRef2 : videoRef;
 
+        console.log(`🔄 Switching from video ${prev} to video ${nextActive}`);
+        console.log('nextRef.current:', nextRef.current);
+
         if (nextRef.current) {
+          console.log(`📂 Setting src on video ${nextActive}:`, videoSrc);
           nextRef.current.src = videoSrc;
           nextRef.current.loop = currentScenario === "idle";
           nextRef.current.load();
 
           nextRef.current.onloadeddata = () => {
+            console.log(`✅ Video ${nextActive} loaded`);
+
             nextRef.current.play().then(() => {
-              console.log(`▶️ Playing: ${currentScenario}`);
+              console.log(`▶️ Playing video ${nextActive}: ${currentScenario}`);
+              console.log(`Current opacity - video ${prev}: ${currentRef.current?.style.opacity}, video ${nextActive}: ${nextRef.current.style.opacity}`);
 
               // Crossfade
               if (currentRef.current) {
+                console.log(`👻 Fading out video ${prev}`);
                 currentRef.current.style.opacity = '0';
               }
+              console.log(`✨ Fading in video ${nextActive}`);
               nextRef.current.style.opacity = '1';
 
               // Cleanup old video after fade
               setTimeout(() => {
                 if (currentRef.current) {
+                  console.log(`⏹️ Pausing and resetting video ${prev}`);
                   currentRef.current.pause();
                   currentRef.current.currentTime = 0;
                 }
                 setLoaded(true);
               }, 300);
-            }).catch(err => console.error("Video play error:", err));
+            }).catch(err => {
+              console.error(`❌ Video ${nextActive} play error:`, err);
+            });
           };
+
+          nextRef.current.onerror = (e) => {
+            console.error(`❌ Video ${nextActive} load error:`, e);
+          };
+        } else {
+          console.error(`❌ nextRef.current is null for video ${nextActive}`);
         }
 
         return nextActive;
       });
     }
-  }, [currentScenario, videos]); // ✅ UKLONJEN activeVideo
+  }, [currentScenario, videos]);
 
   useEffect(() => {
     setHealth(prev => {
@@ -1382,6 +1423,50 @@ export default function ArenaFrame({
                       >
                         RESET HP[H]
                       </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        )}
+
+        {/* 🐛 DEBUG PANEL */}
+        {testingMode && (
+            <div className="absolute bottom-6 left-6 z-30 pixel-font">
+              <div className="relative">
+                <div className="flex flex-col gap-0 bg-black border-4 border-red-700 scanlines" style={{
+                  minWidth: '300px',
+                  boxShadow: '8px 8px 0 rgba(0,0,0,0.5)',
+                  imageRendering: 'pixelated'
+                }}>
+                  <div className="px-4 py-2 bg-red-900 border-b-4 border-red-700 flex items-center justify-between">
+            <span className="text-[8px] text-red-400 tracking-wider">
+              🐛 DEBUG
+            </span>
+                  </div>
+
+                  <div className="p-3 text-[7px] text-white space-y-1">
+                    <div>activeVideo: {activeVideo}</div>
+                    <div>currentScenario: {currentScenario}</div>
+                    <div>loaded: {loaded ? 'true' : 'false'}</div>
+                    <div>isTransitioning: {isTransitioning ? 'true' : 'false'}</div>
+
+                    <div className="mt-2 pt-2 border-t border-red-700">
+                      <div className="font-bold text-red-400 mb-1">VIDEO 1:</div>
+                      <div>ref: {videoRef.current ? '✅' : '❌'}</div>
+                      <div>src: {videoRef.current?.src ? '✅' : '❌'}</div>
+                      <div>opacity: {videoRef.current?.style.opacity || 'none'}</div>
+                      <div>paused: {videoRef.current?.paused ? 'true' : 'false'}</div>
+                      <div>currentTime: {videoRef.current?.currentTime.toFixed(2) || '0'}</div>
+                    </div>
+
+                    <div className="mt-2 pt-2 border-t border-red-700">
+                      <div className="font-bold text-red-400 mb-1">VIDEO 2:</div>
+                      <div>ref: {videoRef2.current ? '✅' : '❌'}</div>
+                      <div>src: {videoRef2.current?.src ? '✅' : '❌'}</div>
+                      <div>opacity: {videoRef2.current?.style.opacity || 'none'}</div>
+                      <div>paused: {videoRef2.current?.paused ? 'true' : 'false'}</div>
+                      <div>currentTime: {videoRef2.current?.currentTime.toFixed(2) || '0'}</div>
                     </div>
                   </div>
                 </div>

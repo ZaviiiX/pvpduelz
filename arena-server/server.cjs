@@ -11,6 +11,7 @@ const io = socketIO(server, {
     cors: {
         origin: [
             "https://arena-frontend.onrender.com",
+            "https://arena-server-gh2h.onrender.com",
             "http://localhost:5173",
             process.env.FRONTEND_URL || "*"
         ],

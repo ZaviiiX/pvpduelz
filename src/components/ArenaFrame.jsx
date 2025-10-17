@@ -96,6 +96,7 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, market
           <img
               src={`/images/${label.toLowerCase()}_logo.png`}
               className="w-20 h-20 drop-shadow-[0_0_10px_rgba(0,0,0,0.6)]"
+              alt={label}
           />
         </div>
 
@@ -121,7 +122,7 @@ export default function ArenaFrame({
                                      fullHeight = true,
                                      testingMode = true,
                                      syncMode = true,
-                                     serverUrl = "https://arena-server-gh2h.onrender.com",
+                                     serverUrl = "https://arena-server-gh2h.onrender.com", // ✅ Tvoj pravi server
                                      videos = {
                                        idle: "/videos/solana-vs-bnb.mp4",
                                        solPump: "/videos/sol-winning.mp4",
@@ -135,10 +136,9 @@ export default function ArenaFrame({
                                        bothBack: "/videos/both-back-to-stance.mp4",
                                      },
                                    }) {
-  // 🎬 DUAL VIDEO REFS - for smooth crossfade
   const video1Ref = useRef(null);
   const video2Ref = useRef(null);
-  const [activeVideoIndex, setActiveVideoIndex] = useState(0); // 0 or 1
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
 
   const [currentScenario, setCurrentScenario] = useState("idle");
   const [pendingScenario, setPendingScenario] = useState(null);
@@ -156,12 +156,10 @@ export default function ArenaFrame({
   const [isConnected, setIsConnected] = useState(false);
   const [userCount, setUserCount] = useState(0);
 
-  // Keep ref in sync
   useEffect(() => {
     currentScenarioRef.current = currentScenario;
   }, [currentScenario]);
 
-  // 🎬 Initial video load
   useEffect(() => {
     if (video1Ref.current && videos.idle) {
       video1Ref.current.src = videos.idle;
@@ -212,11 +210,8 @@ export default function ArenaFrame({
     });
 
     socket.on('scenario_change', ({ scenario }) => {
-      const now = Date.now();
-      if (scenario === currentScenarioRef.current || now - lastScenarioChangeRef.current < 500) {
-        return;
-      }
-      lastScenarioChangeRef.current = now;
+      if (scenario === currentScenarioRef.current) return;
+      console.log('🎬 Server:', scenario);
       setCurrentScenario(scenario);
     });
 
@@ -225,80 +220,112 @@ export default function ArenaFrame({
     return () => socket.disconnect();
   }, [syncMode, serverUrl]);
 
-  // 🎬 SMOOTH VIDEO SWITCHING - NO LOOP!
+  // 🎬 VIDEO SWITCHING
   useEffect(() => {
     const videoSrc = videos[currentScenario];
     if (!videoSrc) return;
 
-    // Determine which video to use
     const currentVideo = activeVideoIndex === 0 ? video1Ref.current : video2Ref.current;
     const nextVideo = activeVideoIndex === 0 ? video2Ref.current : video1Ref.current;
 
     if (!nextVideo || !currentVideo) return;
 
-    console.log(`🎬 Switching to ${currentScenario} using video ${activeVideoIndex === 0 ? 2 : 1}`);
+    console.log(`🎬 ${currentScenario}`);
 
-    // Prepare next video
     nextVideo.src = videoSrc;
     nextVideo.loop = currentScenario === "idle";
-    nextVideo.currentTime = 0;
+    nextVideo.preload = "auto";
     nextVideo.load();
 
-    nextVideo.onloadeddata = () => {
-      // Play next video
+    const handleCanPlay = () => {
+      nextVideo.currentTime = 0;
+
       nextVideo.play().then(() => {
-        // Crossfade
+        console.log(`▶️ Playing: ${currentScenario}`);
+
+        // ✅ DEBUG - Log opacity BEFORE
+        console.log(`BEFORE: V1=${video1Ref.current?.style.opacity} V2=${video2Ref.current?.style.opacity}`);
+
         currentVideo.style.opacity = '0';
         currentVideo.style.zIndex = '1';
         nextVideo.style.opacity = '1';
         nextVideo.style.zIndex = '2';
 
-        // Switch active index
+        // ✅ DEBUG - Log opacity AFTER
+        console.log(`AFTER: V1=${video1Ref.current?.style.opacity} V2=${video2Ref.current?.style.zIndex}`);
+
         setActiveVideoIndex(prev => prev === 0 ? 1 : 0);
 
-        // Pause and reset old video after fade
         setTimeout(() => {
           currentVideo.pause();
           currentVideo.currentTime = 0;
-        }, 500);
-      }).catch(e => console.error("Play error:", e));
+        }, 100);
+
+      }).catch(e => console.error("❌ Play error:", e));
     };
 
-  }, [currentScenario]); // ⚠️ NO activeVideoIndex here!
+    nextVideo.addEventListener('canplaythrough', handleCanPlay, { once: true });
+
+    return () => {
+      nextVideo.removeEventListener('canplaythrough', handleCanPlay);
+    };
+
+  }, [currentScenario]); // ❌ BEZ activeVideoIndex!
+
+  const handleVideoEnded = useCallback(() => {
+    console.log('🏁 END:', currentScenario);
+
+    let nextScenario = null;
+
+    if (pendingScenario) {
+      nextScenario = pendingScenario;
+      setCurrentScenario(pendingScenario);
+      setPendingScenario(null);
+    } else if (currentScenario.includes("Pump") || currentScenario.includes("Dump")) {
+      const token = currentScenario.includes("sol") ? "sol" :
+          currentScenario.includes("bnb") ? "bnb" : "both";
+      nextScenario = `${token}Back`;
+      setCurrentScenario(nextScenario);
+    } else if (currentScenario.includes("Back")) {
+      nextScenario = "idle";
+      setCurrentScenario(nextScenario);
+    }
+
+    if (nextScenario && syncMode && socketRef.current && testingMode) {
+      socketRef.current.emit('video_ended', {
+        scenario: currentScenario,
+        nextScenario: nextScenario
+      });
+    }
+  }, [pendingScenario, currentScenario, syncMode, testingMode]);
+
+  useEffect(() => {
+    const video1 = video1Ref.current;
+    const video2 = video2Ref.current;
+
+    if (video1) video1.addEventListener('ended', handleVideoEnded);
+    if (video2) video2.addEventListener('ended', handleVideoEnded);
+
+    return () => {
+      if (video1) video1.removeEventListener('ended', handleVideoEnded);
+      if (video2) video2.removeEventListener('ended', handleVideoEnded);
+    };
+  }, [handleVideoEnded]);
 
   const getTokenStatus = (token) => {
     const isSol = token.label.toLowerCase().includes('sol');
     const scenario = currentScenario.toLowerCase();
     const isRelevantToken = scenario.includes(isSol ? 'sol' : 'bnb') || scenario.includes('both');
 
-    return {
-      isActive: isRelevantToken,
-    };
+    return { isActive: isRelevantToken };
   };
-
-  const handleVideoEnded = useCallback(() => {
-    if (pendingScenario) {
-      setCurrentScenario(pendingScenario);
-      setPendingScenario(null);
-      return;
-    }
-
-    if (currentScenario.includes("Pump") || currentScenario.includes("Dump")) {
-      const token = currentScenario.includes("sol") ? "sol" : currentScenario.includes("bnb") ? "bnb" : "both";
-      setCurrentScenario(`${token}Back`);
-      return;
-    }
-
-    if (currentScenario.includes("Back")) {
-      setCurrentScenario("idle");
-    }
-  }, [pendingScenario, currentScenario]);
 
   const handleScenarioChange = useCallback((newScenario) => {
     const now = Date.now();
     if (now - lastScenarioChangeRef.current < 500) return;
 
     if (syncMode && socketRef.current && testingMode) {
+      console.log('🎮 Button:', newScenario);
       lastScenarioChangeRef.current = now;
       socketRef.current.emit('test_scenario', newScenario);
       return;
@@ -320,13 +347,8 @@ export default function ArenaFrame({
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
       const keyMap = {
-        '1': 'idle',
-        '2': 'solPump',
-        '3': 'bnbPump',
-        '4': 'bothPump',
-        '5': 'solDump',
-        '6': 'bnbDump',
-        '7': 'bothDump',
+        '1': 'idle', '2': 'solPump', '3': 'bnbPump', '4': 'bothPump',
+        '5': 'solDump', '6': 'bnbDump', '7': 'bothDump',
         ' ': () => {
           if (syncMode && socketRef.current) {
             socketRef.current.emit('reset_health');
@@ -381,29 +403,13 @@ export default function ArenaFrame({
         .animate-float { animation: float 3s ease-in-out infinite; }
         .animate-screen-shake { animation: screenShake 0.5s ease-in-out infinite; }
         .pixel-font { font-family: 'Press Start 2P', monospace; }
-        .scanlines::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.15) 1px, transparent 1px, transparent 2px);
-          pointer-events: none;
-          z-index: 100;
-        }
       `}</style>
 
-        {/* Simple gradient background with grid pattern */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0c0f] via-[#0f1318] to-[#1a1f28]" />
-
-        {/* Grid pattern overlay */}
         <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: `
-            repeating-linear-gradient(0deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 40px),
-            repeating-linear-gradient(90deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 40px)
-          `,
+          backgroundImage: `repeating-linear-gradient(0deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 40px)`,
           backgroundSize: '40px 40px'
         }} />
-
-        {/* Vignette effect */}
         <div className="absolute inset-0" style={{
           background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.5) 100%)'
         }} />
@@ -441,92 +447,48 @@ export default function ArenaFrame({
           <TokenShield {...rightToken} {...getTokenStatus(rightToken)} marketChange={marketData.bnb.change24h} />
         </div>
 
-        {/* Video container - explicit positioning */}
         <div style={{
-          position: 'relative',
-          zIndex: 10,
-          aspectRatio: aspect,
+          position: 'relative', zIndex: 10, aspectRatio: aspect,
           width: fullHeight ? "auto" : "min(92vw, 1100px)",
           height: fullHeight ? "calc(100vh - 180px)" : undefined,
           maxWidth: "min(92vw, 1600px)",
           maxHeight: fullHeight ? "calc(100vh - 180px)" : undefined
         }}>
           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-            {/* Frame border - outer */}
             <div style={{
-              position: 'absolute',
-              inset: '-2rem',
+              position: 'absolute', inset: '-2rem',
               background: 'linear-gradient(to bottom, rgb(31, 41, 55), rgb(17, 24, 39), rgb(0, 0, 0))',
               border: '8px solid rgb(55, 65, 81)',
               boxShadow: 'inset 0 4px 0 rgba(255,255,255,0.1), 0 20px 50px rgba(0,0,0,0.8)'
             }} />
 
-            {/* Frame border - inner */}
             <div style={{
-              position: 'absolute',
-              inset: '-0.5rem',
-              background: 'black',
-              border: '4px solid rgb(17, 24, 39)'
+              position: 'absolute', inset: '-0.5rem',
+              background: 'black', border: '4px solid rgb(17, 24, 39)'
             }} />
 
-            {/* Video container */}
             <div style={{
-              position: 'relative',
-              width: '100%',
-              height: '100%',
-              overflow: 'hidden',
-              border: '4px solid rgb(31, 41, 55)'
+              position: 'relative', width: '100%', height: '100%',
+              overflow: 'hidden', border: '4px solid rgb(31, 41, 55)'
             }}>
-              {/* 🎬 VIDEO 1 */}
-              <video
-                  ref={video1Ref}
-                  playsInline
-                  muted
-                  preload="auto"
-                  onEnded={handleVideoEnded}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    transition: 'opacity 0.5s ease-in-out',
-                    opacity: 0,
-                    zIndex: 1
-                  }}
-              />
+              <video ref={video1Ref} playsInline muted preload="auto"
+                     style={{
+                       position: 'absolute', top: 0, left: 0,
+                       width: '100%', height: '100%', objectFit: 'cover',
+                       opacity: 0, zIndex: 1
+                     }} />
 
-              {/* 🎬 VIDEO 2 */}
-              <video
-                  ref={video2Ref}
-                  playsInline
-                  muted
-                  preload="auto"
-                  onEnded={handleVideoEnded}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    transition: 'opacity 0.5s ease-in-out',
-                    opacity: 0,
-                    zIndex: 1
-                  }}
-              />
+              <video ref={video2Ref} playsInline muted preload="auto"
+                     style={{
+                       position: 'absolute', top: 0, left: 0,
+                       width: '100%', height: '100%', objectFit: 'cover',
+                       opacity: 0, zIndex: 1
+                     }} />
 
-              {/* Scanline overlay */}
               <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                 background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 2px, transparent 2px, transparent 4px)',
-                pointerEvents: 'none',
-                zIndex: 10
+                pointerEvents: 'none', zIndex: 10
               }} />
             </div>
           </div>
@@ -535,7 +497,9 @@ export default function ArenaFrame({
         {testingMode && (
             <div className="absolute bottom-6 right-6 z-30 pixel-font">
               <div className="bg-black border-4 border-gray-700 p-3" style={{ minWidth: '200px' }}>
-                <div className="text-[8px] text-yellow-400 mb-3">🧪 TEST</div>
+                <div className="text-[8px] text-yellow-400 mb-3">
+                  🧪 TEST | {currentScenario}
+                </div>
                 <div className="flex flex-col gap-2">
                   {[
                     { key: "idle", label: "IDLE", s: "1" },
@@ -546,16 +510,12 @@ export default function ArenaFrame({
                     { key: "bnbDump", label: "BNB-", s: "6" },
                     { key: "bothDump", label: "BOTH-", s: "7" },
                   ].map(({ key, label, s }) => (
-                      <button
-                          key={key}
-                          onClick={() => handleScenarioChange(key)}
-                          className={cls(
-                              "px-3 py-2 text-[8px] border-2",
-                              currentScenario === key
-                                  ? "bg-yellow-500 text-black border-yellow-700"
-                                  : "bg-gray-800 text-white border-gray-600"
-                          )}
-                      >
+                      <button key={key} onClick={() => handleScenarioChange(key)}
+                              className={cls("px-3 py-2 text-[8px] border-2",
+                                  currentScenario === key
+                                      ? "bg-yellow-500 text-black border-yellow-700"
+                                      : "bg-gray-800 text-white border-gray-600"
+                              )}>
                         {label} [{s}]
                       </button>
                   ))}

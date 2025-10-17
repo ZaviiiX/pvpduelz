@@ -34,17 +34,18 @@ let globalState = {
     pendingScenario: null,
     isTransitioning: false,
     connectedUsers: 0,
+    testMode: false, // ✅ Test mode flag
     videoDurations: {
-        idle: 999999, // Idle loops forever, don't track time
+        idle: 999999,
         solPump: 5,
         bnbPump: 5,
         solDump: 5,
         bnbDump: 5,
         bothPump: 5,
         bothDump: 5,
-        solBack: 3,
-        bnbBack: 3,
-        bothBack: 3,
+        solBack: 5,
+        bnbBack: 5,
+        bothBack: 5,
     }
 };
 
@@ -82,7 +83,7 @@ function updateHealth() {
 
 // 🎬 VIDEO END HANDLER
 function handleVideoEnd() {
-    console.log('🎬 Video ended:', globalState.currentScenario);
+    console.log('🎬 Server: Video ended:', globalState.currentScenario);
 
     if (globalState.pendingScenario) {
         changeScenario(globalState.pendingScenario);
@@ -107,7 +108,7 @@ function handleVideoEnd() {
 
 // 🔄 CHANGE SCENARIO
 function changeScenario(scenario) {
-    console.log(`🎬 Changing scenario to: ${scenario}`);
+    console.log(`🎬 Server: Changing scenario to: ${scenario}`);
     globalState.currentScenario = scenario;
     globalState.videoTime = 0;
     globalState.videoStartTime = Date.now();
@@ -118,19 +119,25 @@ function changeScenario(scenario) {
     });
 }
 
-// ⏱️ VIDEO SYNC - runs every second
+// ⏱️ VIDEO SYNC - runs every second (SAMO JEDAN!)
+// ⏱️ VIDEO SYNC
 setInterval(() => {
     const elapsed = (Date.now() - globalState.videoStartTime) / 1000;
     const duration = globalState.videoDurations[globalState.currentScenario] || 10;
 
     globalState.videoTime = elapsed;
 
-    // Check if video should end (SKIP IDLE - it loops)
+    // ✅ DEBUG: Loguj test mode status
     if (elapsed >= duration && globalState.currentScenario !== 'idle') {
+        console.log(`⏰ Timer check: testMode=${globalState.testMode}, elapsed=${elapsed}s, duration=${duration}s`);
+    }
+
+    if (!globalState.testMode && elapsed >= duration && globalState.currentScenario !== 'idle') {
+        console.log(`⏰ Server timer: Video duration reached, transitioning...`);
         handleVideoEnd();
     }
 
-    // 🔧 FIX: Don't sync idle video (it loops)
+    // Sync video time (not for idle - it loops)
     if (globalState.currentScenario !== 'idle') {
         io.emit('video_sync', {
             scenario: globalState.currentScenario,
@@ -159,7 +166,6 @@ cron.schedule('*/30 * * * * *', async () => {
 });
 
 // 🔌 SOCKET CONNECTION
-// 🔌 SOCKET CONNECTION
 io.on('connection', (socket) => {
     globalState.connectedUsers++;
     console.log(`✅ User connected (Total: ${globalState.connectedUsers})`);
@@ -171,20 +177,37 @@ io.on('connection', (socket) => {
         globalState.connectedUsers--;
         console.log(`❌ User disconnected (Total: ${globalState.connectedUsers})`);
         io.emit('user_count', globalState.connectedUsers);
+
+        // ✅ Ako niko nije konektovan, resetuj test mode
+        if (globalState.connectedUsers === 0) {
+            globalState.testMode = false;
+            console.log('🔄 Test mode disabled (no users)');
+        }
     });
 
     socket.on('test_scenario', (scenario) => {
         console.log('🧪 Test scenario:', scenario);
 
-        // 🔧 FIX: If IDLE, change immediately!
-        if (globalState.currentScenario === 'idle') {
-            console.log('⚡ IDLE detected, changing immediately!');
-            changeScenario(scenario);
-            globalState.isTransitioning = false;
-        } else if (!globalState.isTransitioning) {
-            // Otherwise, queue it
-            globalState.pendingScenario = scenario;
-            globalState.isTransitioning = true;
+        // ✅ Aktiviraj test mod
+        globalState.testMode = true;
+        console.log('🧪 Test mode ENABLED');
+
+        // Promeni scenario
+        changeScenario(scenario);
+        globalState.isTransitioning = false;
+        globalState.pendingScenario = null;
+    });
+
+    // ✅ Klijent javi kada je video završen
+    socket.on('video_ended', (data) => {
+        console.log('🎬 Client reported video ended:', data.scenario, '→', data.nextScenario);
+
+        if (globalState.testMode) {
+            // U test modu, klijent kontroliše!
+            if (data.nextScenario) {
+                console.log('✅ Accepting client transition to:', data.nextScenario);
+                changeScenario(data.nextScenario);
+            }
         }
     });
 

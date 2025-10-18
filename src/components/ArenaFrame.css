@@ -1,0 +1,872 @@
+/* ArenaFrame.css - EPIC HISTORICAL WARFARE */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:wght@400;600;700&display=swap');
+
+/* ============================================
+   EPIC ANIMATIONS
+   ============================================ */
+
+@keyframes torchFlicker {
+    0%, 100% {
+        opacity: 1;
+        filter: brightness(1) drop-shadow(0 0 20px #ff6600);
+    }
+    25% {
+        opacity: 0.9;
+        filter: brightness(0.95) drop-shadow(0 0 25px #ff6600);
+    }
+    50% {
+        opacity: 0.95;
+        filter: brightness(1.05) drop-shadow(0 0 30px #ff6600);
+    }
+    75% {
+        opacity: 0.92;
+        filter: brightness(0.98) drop-shadow(0 0 22px #ff6600);
+    }
+}
+
+@keyframes bannerWave {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+        filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.5));
+    }
+    25% {
+        transform: translateY(-3px) rotate(1deg);
+        filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.6));
+    }
+    75% {
+        transform: translateY(-3px) rotate(-1deg);
+        filter: drop-shadow(3px 3px 6px rgba(0,0,0,0.5));
+    }
+}
+
+@keyframes goldShine {
+    0% {
+        background-position: -200% center;
+    }
+    100% {
+        background-position: 200% center;
+    }
+}
+
+@keyframes drumBeat {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes battleShake {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    10% { transform: translate(-3px, 3px) rotate(-0.5deg); }
+    20% { transform: translate(3px, -3px) rotate(0.5deg); }
+    30% { transform: translate(-3px, 3px) rotate(-0.5deg); }
+    40% { transform: translate(3px, -3px) rotate(0.5deg); }
+    50% { transform: translate(-3px, 3px) rotate(-0.5deg); }
+    60% { transform: translate(3px, -3px) rotate(0.5deg); }
+    70% { transform: translate(-3px, 3px) rotate(-0.5deg); }
+    80% { transform: translate(3px, -3px) rotate(0.5deg); }
+    90% { transform: translate(-3px, 3px) rotate(-0.5deg); }
+}
+
+@keyframes floatUp {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100px) scale(1.2);
+        opacity: 0;
+    }
+}
+
+@keyframes marchIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes flash {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+}
+
+@keyframes shieldFloat {
+    0%, 100% {
+        transform: translateY(0) rotateZ(0deg);
+    }
+    50% {
+        transform: translateY(-15px) rotateZ(5deg);
+    }
+}
+
+@keyframes scrollUnfurl {
+    from {
+        transform: scaleY(0);
+        transform-origin: top;
+    }
+    to {
+        transform: scaleY(1);
+    }
+}
+
+@keyframes crackAppear {
+    0% {
+        background-size: 0% 0%;
+        opacity: 0;
+    }
+    100% {
+        background-size: 100% 100%;
+        opacity: 0.3;
+    }
+}
+
+/* ============================================
+   UTILITY ANIMATIONS
+   ============================================ */
+
+.animate-torch-flicker { animation: torchFlicker 3s ease-in-out infinite; }
+.animate-banner-wave { animation: bannerWave 4s ease-in-out infinite; }
+.animate-gold-shine { animation: goldShine 3s linear infinite; }
+.animate-drum-beat { animation: drumBeat 1s ease-in-out; }
+.animate-battle-shake { animation: battleShake 0.6s ease-in-out; }
+.animate-march-in { animation: marchIn 1s ease-out; }
+.animate-shield-float { animation: shieldFloat 4s ease-in-out infinite; }
+
+/* ============================================
+   TYPOGRAPHY - ANCIENT
+   ============================================ */
+
+.font-ancient {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+}
+
+.font-scroll {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600;
+}
+
+/* ============================================
+   STONE TEXTURE BASE
+   ============================================ */
+
+
+.stone-bg {
+    background:
+            linear-gradient(135deg, #1a3a52 0%, #0d2235 50%, #081420 100%),
+            radial-gradient(ellipse at top, rgba(100, 181, 246, 0.2), transparent 70%);
+}
+
+.stone-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+            repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,.1) 2px, rgba(0,0,0,.1) 4px),
+            repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(0,0,0,.05) 2px, rgba(0,0,0,.05) 4px);
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* ============================================
+   PARCHMENT TEXTURE
+   ============================================ */
+
+.parchment {
+    background:
+            linear-gradient(to bottom, #f4e8d0 0%, #e8d5b7 50%, #d4c4a8 100%);
+    position: relative;
+    box-shadow:
+            inset 0 0 30px rgba(0, 0, 0, 0.2),
+            0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.parchment::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+            url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="n"><feTurbulence baseFrequency="0.9" /></filter><rect width="100" height="100" filter="url(%23n)" opacity="0.05"/></svg>');
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* ============================================
+   GOLD ORNAMENTAL TEXT
+   ============================================ */
+
+.gold-text {
+    color: #d4af37;
+    text-shadow:
+            0 0 5px rgba(212, 175, 55, 0.8),
+            0 0 10px rgba(212, 175, 55, 0.6),
+            0 2px 4px rgba(0, 0, 0, 0.8),
+            0 4px 8px rgba(0, 0, 0, 0.6);
+    background: linear-gradient(to bottom, #ffd700 0%, #d4af37 50%, #b8941f 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+.bronze-text {
+    color: #cd7f32;
+    text-shadow:
+            0 0 5px rgba(205, 127, 50, 0.6),
+            0 2px 4px rgba(0, 0, 0, 0.8);
+    background: linear-gradient(to bottom, #e8a76e 0%, #cd7f32 50%, #8b5a00 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ============================================
+   HEALTH BAR - BLOOD & GOLD
+   ============================================ */
+
+.health-bar-container {
+    position: relative;
+    width: 350px;
+    height: 50px;
+    background:
+            linear-gradient(to bottom, #1a0f08 0%, #0f0805 100%);
+    border: 4px solid #8b6914;
+    border-radius: 0;
+    box-shadow:
+            inset 0 2px 10px rgba(0, 0, 0, 0.8),
+            inset 0 -2px 10px rgba(139, 105, 20, 0.3),
+            0 4px 15px rgba(0, 0, 0, 0.6),
+            0 0 20px rgba(212, 175, 55, 0.2);
+    clip-path: polygon(
+            8px 0, calc(100% - 8px) 0,
+            100% 8px, 100% calc(100% - 8px),
+            calc(100% - 8px) 100%, 8px 100%,
+            0 calc(100% - 8px), 0 8px
+    );
+}
+
+.health-bar-container::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid rgba(139, 105, 20, 0.5);
+    pointer-events: none;
+    clip-path: polygon(
+            6px 0, calc(100% - 6px) 0,
+            100% 6px, 100% calc(100% - 6px),
+            calc(100% - 6px) 100%, 6px 100%,
+            0 calc(100% - 6px), 0 6px
+    );
+}
+
+.health-bar-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent);
+    pointer-events: none;
+}
+
+.health-bar-fill {
+    position: relative;
+    height: 100%;
+    transition: width 0.6s ease-out;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+.health-bar-high {
+    background:
+            repeating-linear-gradient(
+                    90deg,
+                    #00aa44,
+                    #00aa44 4px,
+                    #008833 4px,
+                    #008833 8px
+            ),
+            linear-gradient(to bottom, #00cc55 0%, #008833 50%, #005522 100%);
+    box-shadow:
+            inset 0 2px 10px rgba(255, 255, 255, 0.2),
+            inset 0 -2px 10px rgba(0, 0, 0, 0.5),
+            0 0 15px rgba(0, 170, 68, 0.4);
+}
+
+.health-bar-medium {
+    background:
+            repeating-linear-gradient(
+                    90deg,
+                    #ff8800,
+                    #ff8800 4px,
+                    #cc6600 4px,
+                    #cc6600 8px
+            ),
+            linear-gradient(to bottom, #ffaa00 0%, #ff8800 50%, #cc6600 100%);
+    box-shadow:
+            inset 0 2px 10px rgba(255, 255, 255, 0.2),
+            inset 0 -2px 10px rgba(0, 0, 0, 0.5),
+            0 0 15px rgba(255, 136, 0, 0.4);
+}
+
+.health-bar-low {
+    background:
+            repeating-linear-gradient(
+                    90deg,
+                    #cc0000,
+                    #cc0000 4px,
+                    #990000 4px,
+                    #990000 8px
+            ),
+            linear-gradient(to bottom, #ff0000 0%, #cc0000 50%, #880000 100%);
+    box-shadow:
+            inset 0 2px 10px rgba(255, 255, 255, 0.2),
+            inset 0 -2px 10px rgba(0, 0, 0, 0.5),
+            0 0 20px rgba(204, 0, 0, 0.6);
+    animation: torchFlicker 1.5s ease-in-out infinite;
+}
+
+/* ============================================
+   TOKEN SHIELD - HERALDIC
+   ============================================ */
+
+.token-shield {
+    position: relative;
+    width: 130px;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+.token-shield::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+            linear-gradient(135deg, #d4af37 0%, #b8941f 50%, #8b6914 100%);
+    clip-path: polygon(
+            50% 0%,
+            100% 20%,
+            100% 70%,
+            50% 100%,
+            0% 70%,
+            0% 20%
+    );
+    box-shadow:
+            0 8px 30px rgba(0, 0, 0, 0.6),
+            inset 0 2px 5px rgba(255, 255, 255, 0.3),
+            inset 0 -2px 5px rgba(0, 0, 0, 0.5);
+    border: 3px solid #8b6914;
+}
+
+.token-shield::after {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    background:
+            radial-gradient(ellipse at center, #1a0f08 0%, #0f0805 100%);
+    clip-path: polygon(
+            50% 5%,
+            95% 22%,
+            95% 68%,
+            50% 95%,
+            5% 68%,
+            5% 22%
+    );
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+.token-shield > * {
+    position: relative;
+    z-index: 2;
+}
+
+.token-shield-active {
+    animation: shieldFloat 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 30px #d4af37);
+}
+
+.token-shield-active::before {
+    animation: goldShine 2s linear infinite;
+    background-size: 200% 100%;
+    background-image:
+            linear-gradient(
+                    90deg,
+                    #d4af37 0%,
+                    #ffd700 25%,
+                    #ffed4e 50%,
+                    #ffd700 75%,
+                    #d4af37 100%
+            );
+}
+
+/* ============================================
+   PRICE TICKER - SCROLL BANNER
+   ============================================ */
+
+.price-ticker {
+    background:
+            linear-gradient(to right, #2a1810 0%, #1a0f08 50%, #2a1810 100%);
+    border-top: 3px solid #8b6914;
+    border-bottom: 3px solid #8b6914;
+    padding: 10px 20px;
+    position: relative;
+    box-shadow:
+            0 4px 15px rgba(0, 0, 0, 0.6),
+            inset 0 2px 5px rgba(139, 105, 20, 0.2);
+    transition: all 0.3s ease;
+}
+
+.price-ticker::before {
+    content: '◆';
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #d4af37;
+    font-size: 12px;
+}
+
+.price-ticker::after {
+    content: '◆';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #d4af37;
+    font-size: 12px;
+}
+
+.price-ticker:hover {
+    transform: translateY(-2px);
+    box-shadow:
+            0 6px 20px rgba(0, 0, 0, 0.7),
+            inset 0 2px 8px rgba(139, 105, 20, 0.3);
+    border-color: #d4af37;
+}
+
+/* ============================================
+   STATS PANEL - ANCIENT TABLET
+   ============================================ */
+
+.stats-panel {
+    background:
+            linear-gradient(135deg, #2a1810 0%, #1a0f08 100%);
+    border: 4px solid #8b6914;
+    border-radius: 0;
+    padding: 24px;
+    position: relative;
+    box-shadow:
+            inset 0 2px 10px rgba(0, 0, 0, 0.8),
+            0 8px 30px rgba(0, 0, 0, 0.7);
+    clip-path: polygon(
+            12px 0, calc(100% - 12px) 0,
+            100% 12px, 100% calc(100% - 12px),
+            calc(100% - 12px) 100%, 12px 100%,
+            0 calc(100% - 12px), 0 12px
+    );
+}
+
+.stats-panel::before {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border: 2px solid rgba(139, 105, 20, 0.3);
+    pointer-events: none;
+    clip-path: polygon(
+            8px 0, calc(100% - 8px) 0,
+            100% 8px, 100% calc(100% - 8px),
+            calc(100% - 8px) 100%, 8px 100%,
+            0 calc(100% - 8px), 0 8px
+    );
+}
+
+.stats-panel::after {
+    content: '⚔';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    color: #d4af37;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8));
+}
+
+/* ============================================
+   COMBO DISPLAY - BATTLE CRY
+   ============================================ */
+
+.combo-display {
+    background:
+            linear-gradient(135deg, #8b0000 0%, #660000 100%);
+    border: 4px solid #d4af37;
+    padding: 20px 40px;
+    position: relative;
+    box-shadow:
+            0 0 30px rgba(139, 0, 0, 0.8),
+            inset 0 2px 10px rgba(212, 175, 55, 0.3),
+            0 8px 30px rgba(0, 0, 0, 0.8);
+    clip-path: polygon(
+            10% 0%, 90% 0%,
+            100% 10%, 100% 90%,
+            90% 100%, 10% 100%,
+            0% 90%, 0% 10%
+    );
+    animation: drumBeat 0.8s ease-in-out, torchFlicker 1.5s ease-in-out infinite;
+}
+
+.combo-display::before {
+    content: '⚔';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 24px;
+    color: #d4af37;
+}
+
+.combo-display::after {
+    content: '⚔';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%) scaleX(-1);
+    font-size: 24px;
+    color: #d4af37;
+}
+
+/* ============================================
+   DAMAGE POPUP - BATTLE IMPACT
+   ============================================ */
+
+.damage-popup {
+    font-family: 'Cinzel', serif;
+    font-size: 72px;
+    font-weight: 900;
+    color: #ff0000;
+    text-shadow:
+            0 0 10px #ff0000,
+            0 0 20px #ff0000,
+            0 4px 15px rgba(0, 0, 0, 0.9),
+            0 8px 30px rgba(0, 0, 0, 0.7);
+    animation: floatUp 1.8s ease-out forwards;
+    pointer-events: none;
+    filter: drop-shadow(0 0 20px #8b0000);
+}
+
+/* ============================================
+   BUTTON - CALL TO ARMS
+   ============================================ */
+
+.btn-primary {
+    position: relative;
+    background:
+            linear-gradient(to bottom, #d4af37 0%, #b8941f 50%, #8b6914 100%);
+    color: #1a0f08;
+    font-family: 'Cinzel', serif;
+    font-weight: 900;
+    font-size: 22px;
+    padding: 24px 60px;
+    border: 4px solid #8b6914;
+    border-radius: 0;
+    box-shadow:
+            inset 0 2px 5px rgba(255, 255, 255, 0.3),
+            inset 0 -2px 5px rgba(0, 0, 0, 0.5),
+            0 8px 25px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    clip-path: polygon(
+            8px 0, calc(100% - 8px) 0,
+            100% 8px, 100% calc(100% - 8px),
+            calc(100% - 8px) 100%, 8px 100%,
+            0 calc(100% - 8px), 0 8px
+    );
+}
+
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+            135deg,
+            transparent 40%,
+            rgba(255, 255, 255, 0.3) 50%,
+            transparent 60%
+    );
+    background-size: 200% 200%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.btn-primary:hover {
+    transform: translateY(-4px);
+    box-shadow:
+            inset 0 2px 8px rgba(255, 255, 255, 0.4),
+            inset 0 -2px 8px rgba(0, 0, 0, 0.6),
+            0 12px 35px rgba(0, 0, 0, 0.7),
+            0 0 30px rgba(212, 175, 55, 0.4);
+    border-color: #d4af37;
+}
+
+.btn-primary:hover::before {
+    opacity: 1;
+    animation: goldShine 1.5s linear infinite;
+}
+
+.btn-primary:active {
+    transform: translateY(-1px);
+}
+
+/* ============================================
+   MOCK CONTROLS - WAR ROOM
+   ============================================ */
+
+.mock-controls {
+    background:
+            linear-gradient(135deg, rgba(42, 24, 16, 0.95), rgba(26, 15, 8, 0.95));
+    border: 4px solid #8b6914;
+    padding: 24px;
+    min-width: 300px;
+    position: relative;
+    box-shadow:
+            inset 0 2px 10px rgba(0, 0, 0, 0.8),
+            0 8px 30px rgba(0, 0, 0, 0.8);
+    clip-path: polygon(
+            12px 0, calc(100% - 12px) 0,
+            100% 12px, 100% calc(100% - 12px),
+            calc(100% - 12px) 100%, 12px 100%,
+            0 calc(100% - 12px), 0 12px
+    );
+}
+
+.mock-controls::before {
+    content: '⚔ WAR TACTICS ⚔';
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    color: #d4af37;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+    white-space: nowrap;
+}
+
+/* ============================================
+   LOADING BAR - FORGE FIRE
+   ============================================ */
+
+.loading-bar {
+    width: 100%;
+    height: 16px;
+    background:
+            linear-gradient(to bottom, #1a0f08 0%, #0f0805 100%);
+    border: 3px solid #8b6914;
+    border-radius: 0;
+    overflow: hidden;
+    box-shadow:
+            inset 0 2px 10px rgba(0, 0, 0, 0.9),
+            0 4px 15px rgba(0, 0, 0, 0.6);
+}
+
+.loading-bar-fill {
+    height: 100%;
+    background:
+            repeating-linear-gradient(
+                    90deg,
+                    #ff6600,
+                    #ff6600 8px,
+                    #ff8800 8px,
+                    #ff8800 16px
+            ),
+            linear-gradient(to right, #ff4400 0%, #ff8800 50%, #ffaa00 100%);
+    box-shadow:
+            0 0 20px rgba(255, 102, 0, 0.6),
+            inset 0 2px 10px rgba(255, 255, 255, 0.3);
+    animation: torchFlicker 2s ease-in-out infinite;
+    transition: width 0.4s ease;
+}
+
+/* ============================================
+   STATUS INDICATOR - HERALD BANNER
+   ============================================ */
+
+.status-indicator {
+    background:
+            linear-gradient(to right, #2a1810 0%, #1a0f08 50%, #2a1810 100%);
+    border-top: 3px solid #8b6914;
+    border-bottom: 3px solid #8b6914;
+    padding: 16px 32px;
+    box-shadow:
+            0 4px 20px rgba(0, 0, 0, 0.6),
+            inset 0 2px 8px rgba(139, 105, 20, 0.2);
+    position: relative;
+}
+
+.status-indicator::before {
+    content: '◆';
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #d4af37;
+    font-size: 16px;
+    animation: torchFlicker 3s ease-in-out infinite;
+}
+
+.status-indicator::after {
+    content: '◆';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #d4af37;
+    font-size: 16px;
+    animation: torchFlicker 3s ease-in-out infinite 1.5s;
+}
+
+.status-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    animation: torchFlicker 2s ease-in-out infinite;
+    box-shadow: 0 0 20px currentColor;
+}
+
+/* ============================================
+   GAME OVER - VICTORY PROCLAMATION
+   ============================================ */
+
+.game-over-overlay {
+    background:
+            radial-gradient(ellipse at center, rgba(42, 24, 16, 0.85), rgba(15, 8, 5, 0.98));
+    backdrop-filter: blur(10px);
+    animation: marchIn 0.8s ease-out;
+}
+
+.game-over-title {
+    font-family: 'Cinzel', serif;
+    font-size: 96px;
+    font-weight: 900;
+    background:
+            linear-gradient(to bottom, #ffd700 0%, #d4af37 30%, #b8941f 70%, #8b6914 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 40px rgba(212, 175, 55, 0.8));
+    animation: goldShine 4s linear infinite, drumBeat 2s ease-in-out infinite;
+    text-transform: uppercase;
+    letter-spacing: 12px;
+    text-shadow: none;
+    position: relative;
+}
+
+.game-over-title::before {
+    content: '⚔';
+    position: absolute;
+    left: -80px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 64px;
+    color: #d4af37;
+    filter: drop-shadow(0 0 20px #d4af37);
+}
+
+.game-over-title::after {
+    content: '⚔';
+    position: absolute;
+    right: -80px;
+    top: 50%;
+    transform: translateY(-50%) scaleX(-1);
+    font-size: 64px;
+    color: #d4af37;
+    filter: drop-shadow(0 0 20px #d4af37);
+}
+
+/* ============================================
+   GLASS EFFECTS - ANCIENT CRYSTAL
+   ============================================ */
+
+.glass-card {
+    background:
+            linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(139, 105, 20, 0.05));
+    backdrop-filter: blur(15px);
+    border: 3px solid rgba(212, 175, 55, 0.3);
+    box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.5),
+            inset 0 2px 10px rgba(212, 175, 55, 0.1);
+}
+
+.glass-dark {
+    background:
+            linear-gradient(135deg, rgba(26, 15, 8, 0.9), rgba(15, 8, 5, 0.9));
+    backdrop-filter: blur(20px);
+    border: 3px solid rgba(139, 105, 20, 0.4);
+    box-shadow:
+            inset 0 2px 10px rgba(0, 0, 0, 0.8),
+            0 8px 32px rgba(0, 0, 0, 0.7);
+}
+
+/* ============================================
+   SCANLINES - ANCIENT TEXTURE
+   ============================================ */
+
+.scanlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+            repeating-linear-gradient(
+                    0deg,
+                    rgba(139, 105, 20, 0.03),
+                    rgba(139, 105, 20, 0.03) 2px,
+                    transparent 2px,
+                    transparent 4px
+            );
+    pointer-events: none;
+    opacity: 0.4;
+    z-index: 997;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .health-bar-container { width: 280px; height: 40px; }
+    .token-shield { width: 90px; height: 105px; }
+    .damage-popup { font-size: 48px; }
+    .game-over-title {
+        font-size: 56px;
+        letter-spacing: 6px;
+    }
+    .game-over-title::before,
+    .game-over-title::after {
+        font-size: 40px;
+        left: -50px;
+        right: -50px;
+    }
+    .btn-primary {
+        font-size: 16px;
+        padding: 18px 40px;
+        letter-spacing: 2px;
+    }
+}

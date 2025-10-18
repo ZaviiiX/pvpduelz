@@ -256,6 +256,41 @@ app.post('/admin/reset', (req, res) => {
     res.json({ success: true, message: 'Game reset' });
 });
 
+// 📊 API ENDPOINTS
+app.get('/', (req, res) => {
+    res.json({
+        status: 'running',
+        message: 'Custom Token Battle Arena',
+        version: '2.0.0',
+        mode: config.mock.enabled ? 'MOCK' : 'LIVE',
+        tokens: {
+            tokenA: config.tokens.tokenA.symbol,
+            tokenB: config.tokens.tokenB.symbol
+        }
+    });
+});
+
+// ✅ DODAJ OVO - Health check za Render
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        uptime: process.uptime(),
+        timestamp: Date.now()
+    });
+});
+
+app.get('/api/health', (req, res) => {  // ✅ I OVO (Render traži /api/health)
+    res.status(200).json({
+        status: 'ok',
+        uptime: process.uptime(),
+        timestamp: Date.now()
+    });
+});
+
+app.get('/status', (req, res) => {
+    // ... postojeći kod
+});
+
 server.listen(PORT, () => {
     console.log(`\n🚀 Custom Token Battle Arena Server`);
     console.log(`📡 Port: ${PORT}`);

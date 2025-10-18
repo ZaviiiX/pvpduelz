@@ -74,7 +74,7 @@ function HealthBar({ health, maxHealth = 100, side = "left", label = "PLAYER", l
   );
 }
 
-function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, marketChange = 0 }) {
+function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, marketChange = 0, icon = null }) {
   const isMoving = Math.abs(marketChange) > 0.5;
 
   return (
@@ -95,7 +95,11 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, market
         )}>
           <div className="w-20 h-20 bg-gradient-to-br from-gray-700 to-gray-900 rounded-full flex items-center justify-center text-white font-bold border-4 border-gray-600"
                style={{ boxShadow: '0 0 20px rgba(0,0,0,0.6)' }}>
-            {label.slice(0, 3)}
+            {icon ? (
+                <img src={icon} alt={label} className="w-12 h-12 object-contain" />
+            ) : (
+                label.slice(0, 3)
+            )}
           </div>
         </div>
 
@@ -221,6 +225,10 @@ export default function ArenaFrame({
                                      testingMode = false,
                                      syncMode = true,
                                      serverUrl = "http://localhost:3001",
+                                     tokenIcons = {              // ✅ DODAJ OVO
+                                       tokenA: null,
+                                       tokenB: null
+                                     },
                                      videos = {
                                        idle: "/videos/solana-vs-bnb.mp4",
                                        tokenAPump: "/videos/sol-winning.mp4",
@@ -244,8 +252,8 @@ export default function ArenaFrame({
 
   // ✅ TOKEN CONFIG STATE
   const [tokenConfig, setTokenConfig] = useState({
-    tokenA: { name: "Token A", symbol: "TKA", isMock: false },
-    tokenB: { name: "Token B", symbol: "TKB", isMock: false },
+    tokenA: { name: "Token A", symbol: "TKA", isMock: false, icon: null },
+    tokenB: { name: "Token B", symbol: "TKB", isMock: false, icon: null },
     roundsToWin: 3
   });
 
@@ -346,6 +354,8 @@ export default function ArenaFrame({
     });
 
     socket.on('initial_state', (state) => {
+      console.log('📦 Initial state:', state);
+      console.log('🖼️ Icon paths:', state.config.tokenA.icon, state.config.tokenB.icon); // ✅ Dodaj ovo
       console.log('📦 Initial state:', state);
 
       // ✅ Set token config
@@ -546,6 +556,7 @@ export default function ArenaFrame({
   // JOIN SCREEN
   if (!hasJoined) {
     return (
+
         <section className="relative w-full h-screen flex items-center justify-center bg-[#0b0d10] overflow-hidden">
           <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -571,7 +582,9 @@ export default function ArenaFrame({
             .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
             .animate-slide-in { animation: slideIn 0.8s ease-out; }
           `}</style>
-
+          {/* TEMP TEST - obriši posle */}
+          <img src="/images/solana_logo.png" alt="test" style={{position: 'fixed', top: 0, left: 0, width: 100}} />
+          <img src="/images/bnb_logo.png" alt="test" style={{position: 'fixed', top: 0, left: 100, width: 100}} />
           <div className="absolute inset-0 bg-gradient-to-b from-[#0a0c0f] via-[#0f1318] to-[#1a1f28]" />
 
           <div className="absolute inset-0 opacity-10" style={{
@@ -602,7 +615,11 @@ export default function ArenaFrame({
               <div className="animate-float">
                 <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-green-700 rounded-full flex items-center justify-center text-white font-bold text-2xl border-4 border-green-900"
                      style={{ boxShadow: '0 0 40px rgba(34, 197, 94, 0.5)' }}>
-                  A
+                  {tokenIcons.tokenA ? (
+                      <img src={tokenIcons.tokenA} alt="Token A" className="w-16 h-16 object-contain" />
+                  ) : (
+                      'A'
+                  )}
                 </div>
               </div>
               <div className="pixel-font text-[48px] text-red-500" style={{
@@ -613,7 +630,11 @@ export default function ArenaFrame({
               <div className="animate-float" style={{ animationDelay: '0.5s' }}>
                 <div className="w-24 h-24 bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-full flex items-center justify-center text-white font-bold text-2xl border-4 border-yellow-900"
                      style={{ boxShadow: '0 0 40px rgba(234, 179, 8, 0.5)' }}>
-                  B
+                  {tokenIcons.tokenB ? (
+                      <img src={tokenIcons.tokenB} alt="Token B" className="w-16 h-16 object-contain" />
+                  ) : (
+                      'B'
+                  )}
                 </div>
               </div>
             </div>
@@ -763,10 +784,22 @@ export default function ArenaFrame({
         </div>
 
         <div className="absolute left-6 top-1/2 -translate-y-1/2 hidden sm:block z-20">
-          <TokenShield label={tokenConfig.tokenA.symbol} tone="#14F195" {...getTokenStatus('tokenA')} marketChange={marketData.tokenA.change24h} />
+          <TokenShield
+              label={tokenConfig.tokenA.symbol}
+              tone="#14F195"
+              icon={tokenConfig.tokenA.icon}
+              {...getTokenStatus('tokenA')}
+              marketChange={marketData.tokenA.change24h}
+          />
         </div>
         <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden sm:block z-20">
-          <TokenShield label={tokenConfig.tokenB.symbol} tone="#F0B90B" {...getTokenStatus('tokenB')} marketChange={marketData.tokenB.change24h} />
+          <TokenShield
+              label={tokenConfig.tokenB.symbol}
+              tone="#F0B90B"
+              icon={tokenConfig.tokenB.icon}
+              {...getTokenStatus('tokenB')}
+              marketChange={marketData.tokenB.change24h}
+          />
         </div>
 
         <div style={{

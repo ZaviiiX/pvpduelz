@@ -86,6 +86,10 @@ io.on('connection', (socket) => {
     const state = gameEngine.getState();
     const marketCache = marketData.getCache();
 
+    console.log('🔍 CONFIG CHECK:');
+    console.log('TokenA icon:', config.tokens.tokenA.icon);
+    console.log('TokenB icon:', config.tokens.tokenB.icon);
+
     socket.emit('initial_state', {
         config: {
             tokenA: config.tokens.tokenA,

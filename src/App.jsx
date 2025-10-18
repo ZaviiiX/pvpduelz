@@ -15,6 +15,11 @@ export default function App() {
                 syncMode={true}
                 serverUrl="http://localhost:3001"  // ✅ Dodaj ovo!
 
+                tokenIcons={{
+                    tokenA: "/images/solana_logo.png",
+                    tokenB: "/images/bnb_logo.png"
+                }}
+
                 videos={{
                     // ✅ UPDATED KEYS - MORAJU ODGOVARATI SERVER SCENARIO
                     idle: "/videos/solana-vs-bnb.mp4",

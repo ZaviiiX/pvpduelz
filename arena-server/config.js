@@ -6,14 +6,16 @@ module.exports = {
             symbol: "SOLKILL",
             address: "0xMOCK_TOKEN_A",
             chain: "bsc",
-            isMock: true
+            isMock: true,
+            icon: "/images/solana_logo.png"  // ✅ DODAJ OVO
         },
         tokenB: {
             name: "Pump Fun Supreme",
             symbol: "PUMPSUP",
             address: "0xMOCK_TOKEN_B",
             chain: "solana",
-            isMock: true
+            isMock: true,
+            icon: "/images/bnb_logo.png"     // ✅ DODAJ OVO
         }
     },
 
@@ -28,8 +30,8 @@ module.exports = {
 
     mock: {
         enabled: true,
-        manualMode: true, // ✅ KLJUČNO - Sve je manual!
+        manualMode: true,
         volatility: 0.5,
-        autoTrends: false // ✅ Ne menja trend automatski
+        autoTrends: false
     }
 };

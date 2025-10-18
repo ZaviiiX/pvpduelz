@@ -122,7 +122,7 @@ export default function ArenaFrame({
                                      fullHeight = true,
                                      testingMode = true,
                                      syncMode = true,
-                                     serverUrl = "https://arena-server-gh2h.onrender.com", // ✅ Tvoj pravi server
+                                     serverUrl = "https://arena-server-gh2h.onrender.com",
                                      videos = {
                                        idle: "/videos/solana-vs-bnb.mp4",
                                        solPump: "/videos/sol-winning.mp4",
@@ -139,6 +139,10 @@ export default function ArenaFrame({
   const video1Ref = useRef(null);
   const video2Ref = useRef(null);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+
+  // ✅ JOIN ARENA STATE
+  const [hasJoined, setHasJoined] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [currentScenario, setCurrentScenario] = useState("idle");
   const [pendingScenario, setPendingScenario] = useState(null);
@@ -160,7 +164,20 @@ export default function ArenaFrame({
     currentScenarioRef.current = currentScenario;
   }, [currentScenario]);
 
+  // ✅ JOIN ARENA HANDLER
+  const handleJoinArena = () => {
+    setIsLoading(true);
+
+    // Simulate loading (preload videa)
+    setTimeout(() => {
+      setHasJoined(true);
+      setIsLoading(false);
+    }, 1500);
+  };
+
   useEffect(() => {
+    if (!hasJoined) return; // ✅ Ne učitavaj dok ne join-uješ
+
     if (video1Ref.current && videos.idle) {
       video1Ref.current.src = videos.idle;
       video1Ref.current.loop = true;
@@ -169,11 +186,11 @@ export default function ArenaFrame({
       video1Ref.current.load();
       video1Ref.current.play().catch(e => console.error("Initial play:", e));
     }
-  }, [videos.idle]);
+  }, [videos.idle, hasJoined]);
 
   // 🌐 WEBSOCKET
   useEffect(() => {
-    if (!syncMode) return;
+    if (!syncMode || !hasJoined) return; // ✅ Ne konektuj dok ne join-uješ
 
     const socket = io(serverUrl, {
       transports: ['websocket'],
@@ -218,10 +235,12 @@ export default function ArenaFrame({
     socket.on('user_count', (count) => setUserCount(count));
 
     return () => socket.disconnect();
-  }, [syncMode, serverUrl]);
+  }, [syncMode, serverUrl, hasJoined]);
 
   // 🎬 VIDEO SWITCHING
   useEffect(() => {
+    if (!hasJoined) return;
+
     const videoSrc = videos[currentScenario];
     if (!videoSrc) return;
 
@@ -243,16 +262,10 @@ export default function ArenaFrame({
       nextVideo.play().then(() => {
         console.log(`▶️ Playing: ${currentScenario}`);
 
-        // ✅ DEBUG - Log opacity BEFORE
-        console.log(`BEFORE: V1=${video1Ref.current?.style.opacity} V2=${video2Ref.current?.style.opacity}`);
-
         currentVideo.style.opacity = '0';
         currentVideo.style.zIndex = '1';
         nextVideo.style.opacity = '1';
         nextVideo.style.zIndex = '2';
-
-        // ✅ DEBUG - Log opacity AFTER
-        console.log(`AFTER: V1=${video1Ref.current?.style.opacity} V2=${video2Ref.current?.style.zIndex}`);
 
         setActiveVideoIndex(prev => prev === 0 ? 1 : 0);
 
@@ -270,7 +283,7 @@ export default function ArenaFrame({
       nextVideo.removeEventListener('canplaythrough', handleCanPlay);
     };
 
-  }, [currentScenario]); // ❌ BEZ activeVideoIndex!
+  }, [currentScenario, hasJoined]);
 
   const handleVideoEnded = useCallback(() => {
     console.log('🏁 END:', currentScenario);
@@ -300,6 +313,8 @@ export default function ArenaFrame({
   }, [pendingScenario, currentScenario, syncMode, testingMode]);
 
   useEffect(() => {
+    if (!hasJoined) return;
+
     const video1 = video1Ref.current;
     const video2 = video2Ref.current;
 
@@ -310,7 +325,7 @@ export default function ArenaFrame({
       if (video1) video1.removeEventListener('ended', handleVideoEnded);
       if (video2) video2.removeEventListener('ended', handleVideoEnded);
     };
-  }, [handleVideoEnded]);
+  }, [handleVideoEnded, hasJoined]);
 
   const getTokenStatus = (token) => {
     const isSol = token.label.toLowerCase().includes('sol');
@@ -341,7 +356,7 @@ export default function ArenaFrame({
   }, [currentScenario, syncMode, testingMode, activeVideoIndex]);
 
   useEffect(() => {
-    if (!testingMode) return;
+    if (!testingMode || !hasJoined) return;
 
     const handleKeyPress = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -368,10 +383,124 @@ export default function ArenaFrame({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [testingMode, handleScenarioChange, syncMode]);
+  }, [testingMode, handleScenarioChange, syncMode, hasJoined]);
 
   const shouldShake = currentScenario.includes('Pump') || currentScenario.includes('Dump');
 
+  // ✅ JOIN ARENA SCREEN
+  if (!hasJoined) {
+    return (
+        <section className="relative w-full h-screen flex items-center justify-center bg-[#0b0d10] overflow-hidden">
+          <style>{`
+            @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+            
+            @keyframes float {
+              0%, 100% { transform: translateY(0px); }
+              50% { transform: translateY(-15px); }
+            }
+            @keyframes blink {
+              0%, 49% { opacity: 1; }
+              50%, 100% { opacity: 0; }
+            }
+            @keyframes pulse-glow {
+              0%, 100% { box-shadow: 0 0 20px rgba(20, 241, 149, 0.5), 0 0 40px rgba(20, 241, 149, 0.3); }
+              50% { box-shadow: 0 0 30px rgba(20, 241, 149, 0.8), 0 0 60px rgba(20, 241, 149, 0.5); }
+            }
+            @keyframes slideIn {
+              from { transform: translateY(-30px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+            .pixel-font { font-family: 'Press Start 2P', monospace; }
+            .animate-float { animation: float 3s ease-in-out infinite; }
+            .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+            .animate-slide-in { animation: slideIn 0.8s ease-out; }
+          `}</style>
+
+          {/* Background */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0c0f] via-[#0f1318] to-[#1a1f28]" />
+
+          {/* Grid pattern */}
+          <div className="absolute inset-0 opacity-10" style={{
+            backgroundImage: `repeating-linear-gradient(0deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 40px)`,
+            backgroundSize: '40px 40px'
+          }} />
+
+          {/* Vignette */}
+          <div className="absolute inset-0" style={{
+            background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.7) 100%)'
+          }} />
+
+          {/* Content */}
+          <div className="relative z-10 flex flex-col items-center gap-12 animate-slide-in">
+
+            {/* Title */}
+            <div className="text-center">
+              <div className="pixel-font text-[#14F195] text-[32px] mb-4" style={{
+                textShadow: '4px 4px 0 rgba(0,0,0,0.8), 0 0 20px rgba(20, 241, 149, 0.5)'
+              }}>
+                CRYPTO ARENA
+              </div>
+              <div className="pixel-font text-yellow-400 text-[12px]" style={{
+                textShadow: '2px 2px 0 rgba(0,0,0,0.8)'
+              }}>
+                LIVE BATTLE ROYALE
+              </div>
+            </div>
+
+            {/* Token Logos */}
+            <div className="flex items-center gap-16">
+              <div className="animate-float">
+                <img src="/images/solana_logo.png" alt="Solana" className="w-24 h-24 drop-shadow-[0_0_20px_rgba(20,241,149,0.6)]" />
+              </div>
+              <div className="pixel-font text-[48px] text-red-500" style={{
+                textShadow: '4px 4px 0 rgba(0,0,0,0.8)'
+              }}>
+                VS
+              </div>
+              <div className="animate-float" style={{ animationDelay: '0.5s' }}>
+                <img src="/images/bnb_logo.png" alt="BNB" className="w-24 h-24 drop-shadow-[0_0_20px_rgba(240,185,11,0.6)]" />
+              </div>
+            </div>
+
+            {/* Join Button */}
+            {!isLoading ? (
+                <button
+                    onClick={handleJoinArena}
+                    className="pixel-font text-[16px] px-12 py-6 bg-[#14F195] text-black border-4 border-[#0ea270]
+                             hover:bg-[#0ea270] hover:scale-105 active:scale-95
+                             transition-all duration-200 animate-pulse-glow cursor-pointer"
+                    style={{
+                      textShadow: '2px 2px 0 rgba(0,0,0,0.3)',
+                      boxShadow: '6px 6px 0 rgba(0,0,0,0.5)'
+                    }}
+                >
+                  JOIN ARENA
+                </button>
+            ) : (
+                <div className="pixel-font text-[16px] px-12 py-6 bg-gray-700 text-white border-4 border-gray-600"
+                     style={{ boxShadow: '6px 6px 0 rgba(0,0,0,0.5)' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 bg-[#14F195]" style={{ animation: 'blink 0.8s infinite' }} />
+                    LOADING...
+                  </div>
+                </div>
+            )}
+
+            {/* Info */}
+            <div className="pixel-font text-[8px] text-gray-500 text-center max-w-md">
+              <div style={{ animation: 'blink 2s infinite' }}>▼ PRESS TO ENTER ▼</div>
+            </div>
+          </div>
+
+          {/* Bottom decoration */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pixel-font text-[8px] text-gray-600">
+            POWERED BY BLOCKCHAIN TECHNOLOGY
+          </div>
+        </section>
+    );
+  }
+
+  // ✅ MAIN ARENA (nakon join-a)
   return (
       <section className={cls(
           "relative w-full h-screen grid place-items-center bg-[#0b0d10] overflow-hidden",

@@ -1,7 +1,7 @@
-// ArenaFrame.jsx - MODERN DESIGN (bez inline stilova)
+// ArenaFrame.jsx - SA PORTAL TRANSITION INTRO + HOVER ENDFRAME (FINAL FIXED)
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import io from "socket.io-client";
-import "./ArenaFrame.css"; // ✅ Import CSS
+import "./ArenaFrame.css";
 
 const cls = (...c) => c.filter(Boolean).join(" ");
 
@@ -215,14 +215,49 @@ export default function ArenaFrame({
                                        tokenABack: "/videos/sol-winning-backto-stance.mp4",
                                        tokenBBack: "/videos/bnb-winning-backto-stance.mp4",
                                      },
+                                     portalVideos = {
+                                       intro: "/video/intro.mp4",
+                                       portalEntrance: "/video/portal-entrance.mp4",
+                                       endframe: "/images/endframe.png",
+                                       endframeHover: "/images/endframe-hover.png"
+                                     },
+                                     portalConfig = {
+                                       enabled: true,
+                                       detectButton: true,
+                                       knownButton: {
+                                         cx_norm: 0.50,
+                                         cy_norm: 0.88,
+                                         r_norm: 0.12
+                                       },
+                                       hsvDetect: {
+                                         HMIN: 170,
+                                         HMAX: 205,
+                                         SMIN: 0.25,
+                                         VMIN: 0.55,
+                                         STEP: 2,
+                                         MIN_AREA: 1200,
+                                         ASPECT_TOL: 0.40
+                                       }
+                                     }
                                    }) {
+
+  // 🎬 PORTAL STATE
+  const [portalPhase, setPortalPhase] = useState('intro');
+  const [showCTA, setShowCTA] = useState(false);
+  const [ctaPosition, setCtaPosition] = useState({ x: '50%', y: '90%', size: 180 });
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+
+  const portalIntroRef = useRef(null);
+  const portalEntranceRef = useRef(null);
+  const canvasRef = useRef(null);
+  const ctaRef = useRef(null);
+
+  // ARENA STATE
   const video1Ref = useRef(null);
   const video2Ref = useRef(null);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
-
   const [hasJoined, setHasJoined] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
 
   const [currentScenario, setCurrentScenario] = useState("idle");
   const currentScenarioRef = useRef("idle");
@@ -256,55 +291,309 @@ export default function ArenaFrame({
     currentScenarioRef.current = currentScenario;
   }, [currentScenario]);
 
-  const handleJoinArena = async () => {
-    setIsLoading(true);
-    setLoadingProgress(0);
+  // Debug portalPhase changes
+  useEffect(() => {
+    console.log('🎭 Portal phase changed to:', portalPhase);
+  }, [portalPhase]);
 
-    const videoUrls = Object.values(videos).filter(url => url);
-    let loadedCount = 0;
+  // 🎨 HELPER FUNCTIONS FOR BUTTON DETECTION
+  const getRenderRect = useCallback((stageEl, videoEl) => {
+    const sw = stageEl.clientWidth, sh = stageEl.clientHeight;
+    const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+    if (!vw || !vh) return null;
+    const s = Math.max(sw / vw, sh / vh);
+    const rw = vw * s, rh = vh * s;
+    const ox = (sw - rw) / 2, oy = (sh - rh) / 2;
+    return { s, rw, rh, ox, oy, sw, sh, vw, vh };
+  }, []);
 
-    const promises = videoUrls.map(url => {
-      return new Promise((resolve) => {
-        const video = document.createElement('video');
-        video.src = url;
-        video.preload = 'auto';
+  const mapToScreen = useCallback((rect, x, y) => {
+    return { x: rect.ox + x * rect.s, y: rect.oy + y * rect.s };
+  }, []);
 
-        video.addEventListener('canplaythrough', () => {
-          loadedCount++;
-          setLoadingProgress((loadedCount / videoUrls.length) * 100);
-          resolve();
-        });
+  const rgb2hsv = useCallback((r, g, b) => {
+    r /= 255; g /= 255; b /= 255;
+    const M = Math.max(r, g, b), m = Math.min(r, g, b), d = M - m;
+    const v = M, s = M ? d / M : 0;
+    let h = 0;
+    if (d) {
+      switch (M) {
+        case r: h = (g - b) / d % 6; break;
+        case g: h = (b - r) / d + 2; break;
+        default: h = (r - g) / d + 4;
+      }
+      h *= 60;
+      if (h < 0) h += 360;
+    }
+    return { h, s, v };
+  }, []);
 
-        video.addEventListener('error', () => {
-          loadedCount++;
-          setLoadingProgress((loadedCount / videoUrls.length) * 100);
-          resolve();
-        });
+  const findButtonBox = useCallback((imgData, config) => {
+    const { HMIN, HMAX, SMIN, VMIN, STEP, MIN_AREA, ASPECT_TOL } = config;
+    const W = imgData.width, H = imgData.height, data = imgData.data;
+    const gw = Math.ceil(W / STEP), gh = Math.ceil(H / STEP);
+    const mask = new Uint8Array(gw * gh), seen = new Uint8Array(gw * gh);
 
-        video.load();
+    for (let gy = 0, y = 0; gy < gh; gy++, y += STEP) {
+      for (let gx = 0, x = 0; gx < gw; gx++, x += STEP) {
+        const i = ((y * W) + x) * 4;
+        const { h, s, v } = rgb2hsv(data[i], data[i + 1], data[i + 2]);
+        mask[gy * gw + gx] = (h >= HMIN && h <= HMAX && s >= SMIN && v >= VMIN) ? 1 : 0;
+      }
+    }
+
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    let best = null;
+
+    for (let gy = 0; gy < gh; gy++) {
+      for (let gx = 0; gx < gw; gx++) {
+        const sidx = gy * gw + gx;
+        if (!mask[sidx] || seen[sidx]) continue;
+
+        let stack = [sidx];
+        seen[sidx] = 1;
+        let minX = gx, maxX = gx, minY = gy, maxY = gy, area = 0;
+
+        while (stack.length) {
+          const cur = stack.pop();
+          area++;
+          const cx = cur % gw, cy = (cur - cx) / gw;
+          if (cx < minX) minX = cx;
+          if (cx > maxX) maxX = cx;
+          if (cy < minY) minY = cy;
+          if (cy > maxY) maxY = cy;
+
+          for (const [dx, dy] of dirs) {
+            const nx = cx + dx, ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+            const ni = ny * gw + nx;
+            if (mask[ni] && !seen[ni]) {
+              seen[ni] = 1;
+              stack.push(ni);
+            }
+          }
+        }
+
+        const x = minX * STEP, y = minY * STEP;
+        const w = (maxX - minX + 1) * STEP, h = (maxY - minY + 1) * STEP;
+        const aspect = w / h, looksCircle = aspect > (1 - ASPECT_TOL) && aspect < (1 + ASPECT_TOL);
+        const areaPix = area * (STEP * STEP);
+
+        if (areaPix >= MIN_AREA && looksCircle) {
+          if (!best || areaPix > best.areaPix) best = { x, y, w, h, areaPix };
+        }
+      }
+    }
+    return best;
+  }, [rgb2hsv]);
+
+  const getLastFrameBox = useCallback(async (videoEl, stageEl) => {
+    return new Promise((resolve) => {
+      try {
+        videoEl.currentTime = Math.max(0, (videoEl.duration || 0) - 0.03);
+      } catch (e) { }
+
+      requestAnimationFrame(() => {
+        const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+        if (!vw || !vh) return resolve(null);
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        canvas.width = vw;
+        canvas.height = vh;
+
+        try {
+          ctx.drawImage(videoEl, 0, 0, vw, vh);
+          if (portalConfig.detectButton) {
+            const imgData = ctx.getImageData(0, 0, vw, vh);
+            const box = findButtonBox(imgData, portalConfig.hsvDetect);
+            resolve(box);
+          } else {
+            resolve(null);
+          }
+        } catch (e) {
+          resolve(null);
+        }
       });
     });
+  }, [portalConfig, findButtonBox]);
 
-    await Promise.all(promises);
+  const calculateCTAPosition = useCallback(async (videoEl, stageEl) => {
+    const rect = getRenderRect(stageEl, videoEl);
+    if (!rect) return;
+
+    let box = null;
+    if (portalConfig.detectButton) {
+      box = await getLastFrameBox(videoEl, stageEl);
+    }
+
+    if (box) {
+      const icx = box.x + box.w / 2;
+      const icy = box.y + box.h / 2;
+      const pt = mapToScreen(rect, icx, icy);
+      const size = Math.max(180, Math.max(box.w, box.h) * rect.s * 1.1);
+      setCtaPosition({ x: `${pt.x}px`, y: `${pt.y}px`, size });
+      console.log('🎯 CTA position (detected):', { x: pt.x, y: pt.y, size });
+    } else if (portalConfig.knownButton) {
+      const { cx_norm, cy_norm, r_norm } = portalConfig.knownButton;
+      const icx = cx_norm * rect.vw;
+      const icy = cy_norm * rect.vh;
+      const pt = mapToScreen(rect, icx, icy);
+      const diameterPx = (r_norm * 2) * rect.rw;
+      const size = Math.max(180, diameterPx * 1.1);
+      setCtaPosition({ x: `${pt.x}px`, y: `${pt.y}px`, size });
+      console.log('🎯 CTA position (known):', { x: pt.x, y: pt.y, size });
+    } else {
+      setCtaPosition({ x: '50%', y: '90%', size: 180 });
+      console.log('🎯 CTA position (fallback):', { x: '50%', y: '90%', size: 180 });
+    }
+  }, [getRenderRect, getLastFrameBox, mapToScreen, portalConfig]);
+
+  // 🎬 PORTAL INTRO VIDEO - AUTO PLAY
+  useEffect(() => {
+    console.log('🎬 Portal config:', portalConfig);
+
+    if (!portalConfig.enabled) {
+      console.log('❌ Portal disabled, skipping to arena');
+      setHasJoined(true);
+      return;
+    }
+
+    const introVid = portalIntroRef.current;
+    console.log('📹 Intro video ref:', introVid);
+
+    if (!introVid) {
+      console.log('❌ Intro video ref not found!');
+      return;
+    }
+
+    console.log('📹 Video src:', portalVideos.intro);
+
+    setPortalPhase('intro');
+
+    introVid.muted = true;
+    introVid.playsInline = true;
+    introVid.load();
+
+    introVid.addEventListener('loadeddata', () => {
+      console.log('✅ Video loaded successfully');
+      setPortalPhase('intro');
+    });
+
+    introVid.addEventListener('error', (e) => {
+      console.error('❌ Video load error:', e);
+      console.error('Video error code:', introVid.error?.code);
+      console.error('Video error message:', introVid.error?.message);
+    });
+
+    const playPromise = introVid.play();
+    if (playPromise) {
+      playPromise
+          .then(() => {
+            console.log('✅ Video playing');
+            setPortalPhase('intro');
+          })
+          .catch((error) => {
+            console.log('❌ Autoplay blocked:', error);
+            setPortalPhase('endframe');
+            setShowCTA(true);
+          });
+    }
+  }, [portalConfig.enabled, portalVideos.intro]);
+
+  // 🎬 INTRO VIDEO ENDED -> SHOW CTA
+  const handleIntroEnded = useCallback(async () => {
+    const introVid = portalIntroRef.current;
+    const stage = introVid?.parentElement;
+
+    console.log('🎬 Intro video ended');
+
+    if (introVid) {
+      try { introVid.pause(); } catch (e) { }
+    }
+
+    setPortalPhase('endframe');
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    if (introVid && stage) {
+      await calculateCTAPosition(introVid, stage);
+    }
+
+    setShowCTA(true);
+    console.log('✅ CTA shown');
+  }, [calculateCTAPosition]);
+
+  // 🎬 CTA CLICK -> PORTAL TRANSITION
+  const handleCTAClick = useCallback(async (e) => {
+    e.preventDefault();
+    if (isTransitioning) return;
+
+    console.log('🎯 CTA clicked, starting transition...');
+
+    setIsHovering(false);
+    setIsTransitioning(true);
+    setPortalPhase('transition');
+    setShowCTA(false);
+
+    const portalVid = portalEntranceRef.current;
+    if (!portalVid) return;
+
+    if (portalVid.readyState < 3) {
+      console.log('⏳ Waiting for portal video to load...');
+      await new Promise(resolve => {
+        portalVid.addEventListener('canplay', resolve, { once: true });
+      });
+    }
 
     setTimeout(() => {
-      setHasJoined(true);
-      setIsLoading(false);
-    }, 500);
-  };
+      portalVid.currentTime = 0;
+      portalVid.play().catch(e => console.error('Portal video play error:', e));
+      console.log('▶️ Portal video playing');
+    }, 600);
+  }, [isTransitioning]);
 
+  // 🎬 PORTAL VIDEO ENDED -> ENTER ARENA
+  const handlePortalEnded = useCallback(() => {
+    console.log('🌀 Portal entrance complete, entering arena...');
+    setPortalPhase('complete');
+    setTimeout(() => {
+      setHasJoined(true);
+    }, 500);
+  }, []);
+
+  // Preload portal videos
+  useEffect(() => {
+    if (portalConfig.enabled && portalEntranceRef.current) {
+      portalEntranceRef.current.load();
+    }
+  }, [portalConfig.enabled]);
+
+  // 🎮 ARENA INITIAL VIDEO SETUP
   useEffect(() => {
     if (!hasJoined) return;
 
-    if (video1Ref.current && videos.idle) {
-      video1Ref.current.src = videos.idle;
-      video1Ref.current.loop = true;
-      video1Ref.current.style.opacity = '1';
-      video1Ref.current.style.zIndex = '2';
-      video1Ref.current.load();
-      video1Ref.current.play().catch(e => console.error("Initial play:", e));
-    }
-  }, [videos.idle, hasJoined]);
+    console.log('🎮 Arena joined, setting up initial video');
+
+    const timer = setTimeout(() => {
+      if (video1Ref.current && videos.idle) {
+        video1Ref.current.src = videos.idle;
+        video1Ref.current.loop = true;
+        video1Ref.current.preload = "auto";
+        video1Ref.current.load();
+
+        video1Ref.current.addEventListener('canplaythrough', () => {
+          video1Ref.current.style.opacity = '1';
+          video1Ref.current.style.zIndex = '2';
+          video1Ref.current.play()
+              .then(() => console.log('✅ Arena initial video started'))
+              .catch(e => console.error("❌ Initial play error:", e));
+        }, { once: true });
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [hasJoined, videos.idle]);
 
   // 🌐 WEBSOCKET CONNECTION
   useEffect(() => {
@@ -398,7 +687,8 @@ export default function ArenaFrame({
     return () => socket.disconnect();
   }, [syncMode, serverUrl, hasJoined]);
 
-  // 🎬 VIDEO SWITCHING
+  // 🎬 VIDEO SWITCHING (arena videos) - SA GUARDOM
+  // 🎬 VIDEO SWITCHING (arena videos) - SA GUARDOM I REF-OM
   useEffect(() => {
     if (!hasJoined) return;
 
@@ -409,6 +699,20 @@ export default function ArenaFrame({
     const nextVideo = activeVideoIndex === 0 ? video2Ref.current : video1Ref.current;
 
     if (!nextVideo || !currentVideo) return;
+
+    // ✅ SKIP ako je prvi render (idle scenario na početku bez src-a)
+    if (currentScenario === "idle" && !currentVideo.src) {
+      console.log('🎮 First render - skip video switching, use initial setup');
+      return;
+    }
+
+    // ✅ SKIP ako je scenario isti kao trenutno prikazani video
+    if (currentVideo.src && currentVideo.src.includes(videoSrc)) {
+      console.log('🎮 Same video already playing, skip switching');
+      return;
+    }
+
+    console.log('🎬 Switching to scenario:', currentScenario);
 
     nextVideo.src = videoSrc;
     nextVideo.loop = currentScenario === "idle";
@@ -432,7 +736,7 @@ export default function ArenaFrame({
 
     nextVideo.addEventListener('canplaythrough', handleCanPlay, { once: true });
     return () => nextVideo.removeEventListener('canplaythrough', handleCanPlay);
-  }, [currentScenario, hasJoined, videos]);
+  }, [currentScenario, hasJoined, videos, activeVideoIndex]); // ✅ activeVideoIndex ostaje u dependencies
 
   const handleVideoEnded = useCallback(() => {
     const attackScenarios = ['tokenAPump', 'tokenBPump', 'tokenACombo', 'tokenBCombo'];
@@ -469,78 +773,151 @@ export default function ArenaFrame({
 
   const shouldShake = currentScenario.includes('Pump') || currentScenario.includes('Combo');
 
-  // JOIN SCREEN
-  if (!hasJoined) {
+  // 🎬 PORTAL SCREEN
+  if (portalConfig.enabled && !hasJoined) {
     return (
-        <section className="relative w-full h-screen flex items-center justify-center bg-gradient-to-br from-amber-950 via-stone-900 to-zinc-950 overflow-hidden">
-          {/* Animated background */}
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM2MzY2ZjEiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20" />
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100vw',
+          height: '100vh',
+          overflow: 'hidden',
+          background: '#000',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <style>{`
+          @keyframes ctaClick {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+          }
+        `}</style>
 
-          <div className="relative z-10 flex flex-col items-center gap-16 animate-slide-in max-w-4xl px-6">
-            {/* Title */}
-            <div className="text-center">
-              <h1 className="font-display text-6xl font-black mb-4 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                CRYPTO ARENA
-              </h1>
-              <p className="font-body text-xl text-indigo-300">Live Battle Royale</p>
-            </div>
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-            {/* VS Section */}
-            <div className="flex items-center gap-24">
-              <div className="animate-float">
-                <div className="w-32 h-32 rounded-full glass-card flex items-center justify-center border-4 border-indigo-400/50 shadow-[0_0_50px_rgba(99,102,241,0.5)]">
-                  {tokenIcons.tokenA ? (
-                      <img src={tokenIcons.tokenA} alt="Token A" className="w-20 h-20 object-contain" />
-                  ) : (
-                      <span className="text-4xl font-bold text-white">A</span>
-                  )}
-                </div>
-              </div>
+          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            {/* INTRO VIDEO */}
+            <video
+                ref={portalIntroRef}
+                playsInline
+                muted
+                preload="auto"
+                onEnded={handleIntroEnded}
+                onLoadedMetadata={() => console.log('Intro video loaded')}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  opacity: portalPhase === 'intro' ? 1 : 0,
 
-              <div className="font-display text-6xl font-black text-red-500">VS</div>
+                  zIndex: 2
+                }}
+            >
+              <source src={portalVideos.intro} type="video/mp4" />
+            </video>
 
-              <div className="animate-float" style={{ animationDelay: '0.5s' }}>
-                <div className="w-32 h-32 rounded-full glass-card flex items-center justify-center border-4 border-purple-400/50 shadow-[0_0_50px_rgba(168,85,247,0.5)]">
-                  {tokenIcons.tokenB ? (
-                      <img src={tokenIcons.tokenB} alt="Token B" className="w-20 h-20 object-contain" />
-                  ) : (
-                      <span className="text-4xl font-bold text-white">B</span>
-                  )}
-                </div>
-              </div>
-            </div>
+            {/* ENDFRAME IMAGE */}
+            {portalVideos.endframe && (
+                <img
+                    src={portalVideos.endframe}
+                    alt=""
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      opacity: portalPhase === 'endframe' ? 1 : 0,
 
-            {/* Button */}
-            {!isLoading ? (
-                <button
-                    onClick={handleJoinArena}
-                    className="btn-primary animate-glow"
-                >
-                  JOIN ARENA
-                </button>
-            ) : (
-                <div className="flex flex-col items-center gap-4 w-full max-w-md">
-                  <div className="glass-dark px-8 py-6 rounded-2xl w-full">
-                    <div className="flex items-center justify-center gap-3 text-white">
-                      <div className="w-4 h-4 bg-indigo-500 rounded-full animate-pulse" />
-                      <span className="font-body text-lg font-semibold">Loading...</span>
-                    </div>
-                  </div>
-
-                  <div className="loading-bar w-full">
-                    <div className="loading-bar-fill" style={{ width: `${loadingProgress}%` }} />
-                  </div>
-                  <div className="font-body text-sm text-gray-400">
-                    {Math.round(loadingProgress)}%
-                  </div>
-                </div>
+                      pointerEvents: 'none',
+                      zIndex: 1
+                    }}
+                />
             )}
 
-            <p className="font-body text-sm text-gray-500 text-center max-w-md">
-              Powered by real-time blockchain data
-            </p>
+            {/* HOVER ENDFRAME */}
+            {portalVideos.endframeHover && (
+                <img
+                    src={portalVideos.endframeHover}
+                    alt=""
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      opacity: isHovering ? 1 : 0,
+
+                      pointerEvents: 'none',
+                      zIndex: 3
+                    }}
+                />
+            )}
+
+            {/* PORTAL VIDEO */}
+            <video
+                ref={portalEntranceRef}
+                playsInline
+                muted
+                preload="auto"
+                onEnded={handlePortalEnded}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  opacity: portalPhase === 'transition' ? 1 : 0,
+
+                  pointerEvents: 'none',
+                  zIndex: 4
+                }}
+            >
+              <source src={portalVideos.portalEntrance} type="video/mp4" />
+            </video>
+
+            {/* CTA BUTTON */}
+            {showCTA && portalPhase === 'endframe' && (
+              <a
+                ref={ctaRef}
+              href="#"
+              onClick={handleCTAClick}
+              onMouseEnter={() => {
+              console.log('🎯 CTA hover started');
+              setIsHovering(true);
+            }}
+              onMouseLeave={() => {
+              console.log('🎯 CTA hover ended');
+              setIsHovering(false);
+            }}
+              style={{
+              position: 'absolute',
+              left: ctaPosition.x,
+              top: ctaPosition.y,
+              transform: 'translate(-50%, -50%)',
+              width: ctaPosition.size + 'px',
+              height: ctaPosition.size + 'px',
+              minWidth: ctaPosition.size + 'px',
+              borderRadius: '50%',
+              background: 'transparent',
+              border: 'none',
+              opacity: 0,
+              cursor: 'pointer',
+              pointerEvents: 'auto',
+              zIndex: 13,
+              // 🐛 DEBUG - odkomentiraj da vidiš gde je button
+              // background: 'rgba(255, 0, 0, 0.3)',
+              // border: '2px solid red',
+              // opacity: 1,
+            }}
+              />
+              )}
           </div>
-        </section>
+        </div>
     );
   }
 
@@ -552,7 +929,6 @@ export default function ArenaFrame({
       )}>
         <ScreenFlash isActive={flashEffect.active} color={flashEffect.color} />
 
-        {/* Background effects */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM2MzY2ZjEiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yeiIvPjwvZz48L2c+PC9zdmc+')] opacity-10" />
 
         <DamagePopup damage={damagePopup.tokenA} position="left" />
@@ -560,7 +936,6 @@ export default function ArenaFrame({
 
         <StatsPanel score={score} round={round} />
 
-        {/* Price Tickers */}
         <div className="absolute top-4 left-6 z-25">
           <PriceTicker token={tokenConfig.tokenA.symbol} price={marketData.tokenA.price} change={marketData.tokenA.change24h} />
         </div>
@@ -571,7 +946,6 @@ export default function ArenaFrame({
         <ComboDisplay combo={combo.tokenA} side="left" />
         <ComboDisplay combo={combo.tokenB} side="right" />
 
-        {/* Status Bar */}
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
           <div className="status-indicator">
             <div className="flex items-center gap-4">
@@ -579,8 +953,8 @@ export default function ArenaFrame({
                   <>
                     <div className={cls("status-dot", isConnected ? "bg-green-500" : "bg-red-500")} />
                     <span className={cls("text-sm font-semibold", isConnected ? "text-green-400" : "text-red-400")}>
-                  {isConnected ? 'LIVE' : 'OFFLINE'}
-                </span>
+                      {isConnected ? 'LIVE' : 'OFFLINE'}
+                    </span>
                     {isConnected && userCount > 0 && (
                         <span className="text-sm text-gray-400">{userCount} viewers</span>
                     )}
@@ -592,7 +966,6 @@ export default function ArenaFrame({
           </div>
         </div>
 
-        {/* Health Bars */}
         <div className="absolute top-20 left-6 z-30">
           <HealthBar health={health.tokenA} side="left" label={tokenConfig.tokenA.symbol} lastDamage={lastDamage.tokenA} />
         </div>
@@ -600,7 +973,6 @@ export default function ArenaFrame({
           <HealthBar health={health.tokenB} side="right" label={tokenConfig.tokenB.symbol} lastDamage={lastDamage.tokenB} />
         </div>
 
-        {/* Token Shields */}
         <div className="absolute left-6 top-1/2 -translate-y-1/2 hidden sm:block z-20">
           <TokenShield
               label={tokenConfig.tokenA.symbol}
@@ -620,7 +992,6 @@ export default function ArenaFrame({
           />
         </div>
 
-        {/* Video Frame - OLD WORKING VERSION */}
         <div style={{
           position: 'relative',
           zIndex: 10,
@@ -631,7 +1002,6 @@ export default function ArenaFrame({
           maxHeight: fullHeight ? "calc(100vh - 180px)" : undefined
         }}>
           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-            {/* Outer frame */}
             <div style={{
               position: 'absolute',
               inset: '-2rem',
@@ -641,7 +1011,6 @@ export default function ArenaFrame({
               borderRadius: '24px'
             }} />
 
-            {/* Inner frame */}
             <div style={{
               position: 'absolute',
               inset: '-0.5rem',
@@ -650,7 +1019,6 @@ export default function ArenaFrame({
               borderRadius: '16px'
             }} />
 
-            {/* Video container */}
             <div style={{
               position: 'relative',
               width: '100%',
@@ -707,7 +1075,6 @@ export default function ArenaFrame({
           </div>
         </div>
 
-        {/* 🎮 MOCK CONTROL PANEL - BOTTOM LEFT */}
         {syncMode && tokenConfig.tokenA?.isMock && (
             <div className="absolute bottom-6 left-6 z-40">
               <div className="mock-controls">
@@ -715,7 +1082,6 @@ export default function ArenaFrame({
                   🎲 MOCK CONTROLS
                 </div>
 
-                {/* MODE INDICATOR */}
                 <div className="mb-3 p-2 glass-dark rounded-lg border border-purple-500/30">
                   <div className="text-xs text-yellow-400 font-semibold">
                     MODE: MANUAL
@@ -726,7 +1092,6 @@ export default function ArenaFrame({
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  {/* Token A Controls */}
                   <div>
                     <div className="text-xs text-green-400 mb-1 font-semibold">{tokenConfig.tokenA.symbol}</div>
                     <div className="flex gap-2">
@@ -751,7 +1116,6 @@ export default function ArenaFrame({
                     </div>
                   </div>
 
-                  {/* Token B Controls */}
                   <div>
                     <div className="text-xs text-yellow-400 mb-1 font-semibold">{tokenConfig.tokenB.symbol}</div>
                     <div className="flex gap-2">
@@ -776,7 +1140,6 @@ export default function ArenaFrame({
                     </div>
                   </div>
 
-                  {/* Manual Battle Trigger */}
                   <div className="border-t border-gray-700 pt-2">
                     <button
                         onClick={() => {
@@ -789,7 +1152,6 @@ export default function ArenaFrame({
                     </button>
                   </div>
 
-                  {/* Quick Scenarios */}
                   <div className="border-t border-gray-700 pt-2">
                     <div className="text-[10px] text-gray-400 mb-2">QUICK SCENARIOS</div>
                     <div className="flex flex-col gap-1">
@@ -814,7 +1176,6 @@ export default function ArenaFrame({
                     </div>
                   </div>
 
-                  {/* Reset */}
                   <div className="border-t border-gray-700 pt-2">
                     <button
                         onClick={() => socketRef.current?.emit('reset_game')}
@@ -828,7 +1189,6 @@ export default function ArenaFrame({
             </div>
         )}
 
-        {/* Game Over */}
         {gameOver && (
             <div className="game-over-overlay absolute inset-0 z-50 flex items-center justify-center">
               <div className="text-center animate-scale-in">

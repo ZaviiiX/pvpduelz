@@ -155,7 +155,7 @@ function PriceTicker({ token, price, change }) {
 // 📊 STATS PANEL
 function StatsPanel({ score, round }) {
   return (
-      <div className="absolute top-4 left-6 z-20 pixel-font">
+      <div className="absolute bottom-6 right-6 z-20 pixel-font">
         <div className="bg-black border-4 border-gray-800 p-3" style={{ minWidth: '200px' }}>
           <div className="text-[10px] text-yellow-400 mb-2">📊 STATS</div>
           <div className="flex flex-col gap-1 text-[8px]">
@@ -367,7 +367,6 @@ export default function ArenaFrame({
     });
 
     // ⚔️ BATTLE UPDATE
-    // ⚔️ BATTLE UPDATE
     socket.on('battle_update', (update) => {
       console.log('⚔️ Battle update received:', update);
       console.log('   Scenario:', update.scenario);
@@ -429,7 +428,6 @@ export default function ArenaFrame({
     return () => socket.disconnect();
   }, [syncMode, serverUrl, hasJoined]);
 
-  // 🎬 VIDEO SWITCHING
   // 🎬 VIDEO SWITCHING
   useEffect(() => {
     if (!hasJoined) return;
@@ -723,12 +721,14 @@ export default function ArenaFrame({
         <DamagePopup damage={damagePopup.tokenA} position="left" />
         <DamagePopup damage={damagePopup.tokenB} position="right" />
 
+        {/* ✅ STATS PANEL - BOTTOM RIGHT */}
         <StatsPanel score={score} round={round} />
 
-        <div className="absolute top-16 left-6 z-20 flex flex-col gap-2">
+        {/* ✅ PRICE TICKERS - TOP */}
+        <div className="absolute top-4 left-6 z-25 flex flex-col gap-2">
           <PriceTicker token={tokenConfig.tokenA.symbol} price={marketData.tokenA.price} change={marketData.tokenA.change24h} />
         </div>
-        <div className="absolute top-16 right-6 z-20 flex flex-col gap-2">
+        <div className="absolute top-4 right-6 z-25 flex flex-col gap-2">
           <PriceTicker token={tokenConfig.tokenB.symbol} price={marketData.tokenB.price} change={marketData.tokenB.change24h} />
         </div>
 
@@ -753,11 +753,12 @@ export default function ArenaFrame({
           </div>
         </div>
 
-        <div className="absolute top-28 left-6 z-20">
+        {/* ✅ HEALTH BARS - TOP-16 (pomjereno niže) */}
+        <div className="absolute top-16 left-6 z-30">
           <HealthBar health={health.tokenA} side="left" label={tokenConfig.tokenA.symbol} lastDamage={lastDamage.tokenA} />
         </div>
 
-        <div className="absolute top-28 right-6 z-20">
+        <div className="absolute top-16 right-6 z-30">
           <HealthBar health={health.tokenB} side="right" label={tokenConfig.tokenB.symbol} lastDamage={lastDamage.tokenB} />
         </div>
 
@@ -815,9 +816,9 @@ export default function ArenaFrame({
           </div>
         </div>
 
-        {/* 🎮 MOCK CONTROL PANEL */}
+        {/* 🎮 MOCK CONTROL PANEL - BOTTOM LEFT */}
         {syncMode && tokenConfig.tokenA?.isMock && (
-            <div className="absolute bottom-6 left-6 z-30 pixel-font">
+            <div className="absolute bottom-6 left-6 z-40 pixel-font">
               <div className="bg-black border-4 border-purple-700 p-3" style={{ minWidth: '250px' }}>
                 <div className="text-[10px] text-purple-400 mb-3 flex items-center gap-2">
                   🎲 MOCK CONTROLS

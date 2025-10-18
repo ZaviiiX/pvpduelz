@@ -93,11 +93,10 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, market
             "relative animate-float transition-all duration-500",
             isActive && 'scale-110'
         )}>
-          <img
-              src={`/images/${label.toLowerCase()}_logo.png`}
-              className="w-20 h-20 drop-shadow-[0_0_10px_rgba(0,0,0,0.6)]"
-              alt={label}
-          />
+          <div className="w-20 h-20 bg-gradient-to-br from-gray-700 to-gray-900 rounded-full flex items-center justify-center text-white font-bold border-4 border-gray-600"
+               style={{ boxShadow: '0 0 20px rgba(0,0,0,0.6)' }}>
+            {label.slice(0, 3)}
+          </div>
         </div>
 
         {isMoving && (
@@ -115,46 +114,155 @@ function TokenShield({ label = "SOL", tone = "#14F195", isActive = false, market
   );
 }
 
+// 🎯 COMBO DISPLAY
+function ComboDisplay({ combo, side = "left" }) {
+  if (combo < 2) return null;
+
+  return (
+      <div className={cls(
+          "absolute top-32 z-30 pixel-font animate-bounce",
+          side === "left" ? "left-6" : "right-6"
+      )}>
+        <div className="bg-red-500 text-white px-4 py-2 border-4 border-red-700"
+             style={{
+               boxShadow: '4px 4px 0 rgba(0,0,0,0.8)',
+               textShadow: '2px 2px 0 rgba(0,0,0,0.5)'
+             }}>
+          <div className="text-[20px] font-black">{combo}x COMBO!</div>
+        </div>
+      </div>
+  );
+}
+
+// 💰 PRICE TICKER
+function PriceTicker({ token, price, change }) {
+  const isPositive = change >= 0;
+
+  return (
+      <div className="flex items-center gap-2 px-3 py-1 bg-black border-2 border-gray-700">
+        <span className="text-[8px] text-gray-400 pixel-font">{token}</span>
+        <span className="text-[10px] text-white pixel-font font-bold">${price.toFixed(6)}</span>
+        <span className={cls(
+            "text-[8px] pixel-font font-bold",
+            isPositive ? "text-green-400" : "text-red-400"
+        )}>
+          {isPositive ? '▲' : '▼'} {Math.abs(change).toFixed(2)}%
+        </span>
+      </div>
+  );
+}
+
+// 📊 STATS PANEL
+function StatsPanel({ score, round }) {
+  return (
+      <div className="absolute top-4 left-6 z-20 pixel-font">
+        <div className="bg-black border-4 border-gray-800 p-3" style={{ minWidth: '200px' }}>
+          <div className="text-[10px] text-yellow-400 mb-2">📊 STATS</div>
+          <div className="flex flex-col gap-1 text-[8px]">
+            <div className="flex justify-between text-gray-400">
+              <span>ROUND:</span>
+              <span className="text-white">{round}</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span>TOKEN A WINS:</span>
+              <span className="text-green-400">{score.tokenA}</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span>TOKEN B WINS:</span>
+              <span className="text-yellow-400">{score.tokenB}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+  );
+}
+
+// 💥 SCREEN FLASH
+function ScreenFlash({ isActive, color = "red" }) {
+  if (!isActive) return null;
+
+  const colors = {
+    red: 'rgba(255, 0, 0, 0.3)',
+    green: 'rgba(0, 255, 0, 0.2)',
+    yellow: 'rgba(255, 255, 0, 0.2)'
+  };
+
+  return (
+      <div
+          className="absolute inset-0 pointer-events-none z-50"
+          style={{
+            background: colors[color] || colors.red,
+            animation: 'flash 0.3s ease-out'
+          }}
+      />
+  );
+}
+
+// 💀 DAMAGE POPUP
+function DamagePopup({ damage, position = "left" }) {
+  if (!damage) return null;
+
+  return (
+      <div className={cls(
+          "absolute top-40 z-40 pixel-font text-[24px] font-black text-red-500 animate-bounce",
+          position === "left" ? "left-24" : "right-24"
+      )} style={{
+        textShadow: '3px 3px 0 rgba(0,0,0,0.8)',
+        animation: 'floatUp 1s ease-out forwards'
+      }}>
+        -{damage}
+      </div>
+  );
+}
+
 export default function ArenaFrame({
                                      aspect = "16/9",
-                                     leftToken = { label: "SOLANA", tone: "#14F195" },
-                                     rightToken = { label: "BNB", tone: "#F0B90B" },
                                      fullHeight = true,
-                                     testingMode = true,
+                                     testingMode = false,
                                      syncMode = true,
-                                     serverUrl = "https://arena-server-gh2h.onrender.com",
+                                     serverUrl = "http://localhost:3001",
                                      videos = {
                                        idle: "/videos/solana-vs-bnb.mp4",
-                                       solPump: "/videos/sol-winning.mp4",
-                                       bnbPump: "/videos/bnb-winning.mp4",
-                                       solDump: "/videos/sol-losing.mp4",
-                                       bnbDump: "/videos/bnb-losing.mp4",
-                                       bothPump: "/videos/both-pumping.mp4",
-                                       bothDump: "/videos/both-dumping.mp4",
-                                       solBack: "/videos/sol-back-to-stance.mp4",
-                                       bnbBack: "/videos/bnb-back-to-stance.mp4",
-                                       bothBack: "/videos/both-back-to-stance.mp4",
+                                       tokenAPump: "/videos/sol-winning.mp4",
+                                       tokenBPump: "/videos/bnb-winning.mp4",
+                                       tokenACombo: "/videos/sol-winning.mp4",
+                                       tokenBCombo: "/videos/bnb-winning.mp4",
+                                       tokenAVictory: "/videos/sol-winning.mp4",
+                                       tokenBVictory: "/videos/bnb-winning.mp4",
                                      },
                                    }) {
   const video1Ref = useRef(null);
   const video2Ref = useRef(null);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
 
-  // ✅ JOIN ARENA STATE
   const [hasJoined, setHasJoined] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   const [currentScenario, setCurrentScenario] = useState("idle");
-  const [pendingScenario, setPendingScenario] = useState(null);
-  const lastScenarioChangeRef = useRef(0);
   const currentScenarioRef = useRef("idle");
 
-  const [health, setHealth] = useState({ sol: 100, bnb: 100 });
-  const [lastDamage, setLastDamage] = useState({ sol: 0, bnb: 0 });
-  const [marketData, setMarketData] = useState({
-    sol: { price: 0, change24h: 0 },
-    bnb: { price: 0, change24h: 0 },
+  // ✅ TOKEN CONFIG STATE
+  const [tokenConfig, setTokenConfig] = useState({
+    tokenA: { name: "Token A", symbol: "TKA", isMock: false },
+    tokenB: { name: "Token B", symbol: "TKB", isMock: false },
+    roundsToWin: 3
   });
+
+  const [health, setHealth] = useState({ tokenA: 100, tokenB: 100 });
+  const [lastDamage, setLastDamage] = useState({ tokenA: 0, tokenB: 0 });
+  const [damagePopup, setDamagePopup] = useState({ tokenA: null, tokenB: null });
+
+  const [marketData, setMarketData] = useState({
+    tokenA: { price: 0.05, change24h: 0, marketCap: 5000000 },
+    tokenB: { price: 0.08, change24h: 0, marketCap: 8000000 },
+  });
+
+  const [combo, setCombo] = useState({ tokenA: 0, tokenB: 0 });
+  const [score, setScore] = useState({ tokenA: 0, tokenB: 0 });
+  const [round, setRound] = useState(1);
+  const [flashEffect, setFlashEffect] = useState({ active: false, color: 'red' });
+  const [gameOver, setGameOver] = useState(null);
 
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -164,19 +272,45 @@ export default function ArenaFrame({
     currentScenarioRef.current = currentScenario;
   }, [currentScenario]);
 
-  // ✅ JOIN ARENA HANDLER
-  const handleJoinArena = () => {
+  const handleJoinArena = async () => {
     setIsLoading(true);
+    setLoadingProgress(0);
 
-    // Simulate loading (preload videa)
+    const videoUrls = Object.values(videos).filter(url => url);
+    let loadedCount = 0;
+
+    const promises = videoUrls.map(url => {
+      return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.src = url;
+        video.preload = 'auto';
+
+        video.addEventListener('canplaythrough', () => {
+          loadedCount++;
+          setLoadingProgress((loadedCount / videoUrls.length) * 100);
+          resolve();
+        });
+
+        video.addEventListener('error', () => {
+          loadedCount++;
+          setLoadingProgress((loadedCount / videoUrls.length) * 100);
+          resolve();
+        });
+
+        video.load();
+      });
+    });
+
+    await Promise.all(promises);
+
     setTimeout(() => {
       setHasJoined(true);
       setIsLoading(false);
-    }, 1500);
+    }, 500);
   };
 
   useEffect(() => {
-    if (!hasJoined) return; // ✅ Ne učitavaj dok ne join-uješ
+    if (!hasJoined) return;
 
     if (video1Ref.current && videos.idle) {
       video1Ref.current.src = videos.idle;
@@ -188,9 +322,9 @@ export default function ArenaFrame({
     }
   }, [videos.idle, hasJoined]);
 
-  // 🌐 WEBSOCKET
+  // 🌐 WEBSOCKET CONNECTION
   useEffect(() => {
-    if (!syncMode || !hasJoined) return; // ✅ Ne konektuj dok ne join-uješ
+    if (!syncMode || !hasJoined) return;
 
     const socket = io(serverUrl, {
       transports: ['websocket'],
@@ -202,54 +336,125 @@ export default function ArenaFrame({
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('✅ Connected');
+      console.log('✅ Connected to Battle Server');
       setIsConnected(true);
     });
 
     socket.on('disconnect', () => {
-      console.log('❌ Disconnected');
+      console.log('❌ Disconnected from Battle Server');
       setIsConnected(false);
     });
 
     socket.on('initial_state', (state) => {
-      setCurrentScenario(state.currentScenario);
+      console.log('📦 Initial state:', state);
+
+      // ✅ Set token config
+      if (state.config) {
+        setTokenConfig({
+          tokenA: state.config.tokenA,
+          tokenB: state.config.tokenB,
+          roundsToWin: state.config.roundsToWin
+        });
+      }
+
       setHealth(state.health);
+      setCombo(state.combo);
+      setRound(state.currentRound);
+      setScore(state.score);
       setMarketData(state.marketData);
+      setCurrentScenario(state.scenario);
       setLastDamage(state.lastDamage);
-      setPendingScenario(state.pendingScenario);
     });
 
-    socket.on('state_update', (update) => {
-      if (update.health) setHealth(update.health);
-      if (update.marketData) setMarketData(update.marketData);
-      if (update.lastDamage) setLastDamage(update.lastDamage);
-      if (update.pendingScenario !== undefined) setPendingScenario(update.pendingScenario);
+    // ⚔️ BATTLE UPDATE
+    // ⚔️ BATTLE UPDATE
+    socket.on('battle_update', (update) => {
+      console.log('⚔️ Battle update received:', update);
+      console.log('   Scenario:', update.scenario);
+      console.log('   Attacker:', update.attacker);
+      console.log('   Defender:', update.defender);
+      console.log('   Damage:', update.damage);
+
+      setHealth(update.health);
+      setMarketData(update.marketData);
+      setCombo(update.combo);
+      setScore(update.score);
+      setLastDamage(update.lastDamage);
+      setRound(update.currentRound);
+
+      // Damage popup
+      if (update.defender === 'tokenA') {
+        setDamagePopup(prev => ({ ...prev, tokenA: update.damage }));
+        setTimeout(() => setDamagePopup(prev => ({ ...prev, tokenA: null })), 1500);
+      } else if (update.defender === 'tokenB') {
+        setDamagePopup(prev => ({ ...prev, tokenB: update.damage }));
+        setTimeout(() => setDamagePopup(prev => ({ ...prev, tokenB: null })), 1500);
+      }
+
+      // ✅ SCENARIO CHANGE - CRITICAL!
+      if (update.scenario) {
+        console.log('🎬 Setting scenario from battle_update:', update.scenario);
+        setCurrentScenario(update.scenario);
+
+        if (update.scenario.includes('Victory')) {
+          setGameOver(update.attacker);
+        }
+      }
+
+      // Screen flash
+      setFlashEffect({ active: true, color: 'red' });
+      setTimeout(() => setFlashEffect({ active: false, color: 'red' }), 300);
+    });
+
+    socket.on('game_reset', (data) => {
+      console.log('🔄 Game reset');
+      setHealth(data.health);
+      setRound(data.currentRound);
+      setScore(data.score);
+      setGameOver(null);
+      setCombo({ tokenA: 0, tokenB: 0 });
+      setCurrentScenario('idle');
     });
 
     socket.on('scenario_change', ({ scenario }) => {
-      if (scenario === currentScenarioRef.current) return;
-      console.log('🎬 Server:', scenario);
-      setCurrentScenario(scenario);
+      if (scenario !== currentScenario) {
+        setCurrentScenario(scenario);
+      }
     });
 
-    socket.on('user_count', (count) => setUserCount(count));
+    socket.on('user_count', (count) => {
+      setUserCount(count);
+    });
 
     return () => socket.disconnect();
   }, [syncMode, serverUrl, hasJoined]);
 
   // 🎬 VIDEO SWITCHING
+  // 🎬 VIDEO SWITCHING
   useEffect(() => {
     if (!hasJoined) return;
 
+    console.log('🎬 VIDEO SWITCH - Scenario changed to:', currentScenario);
+
     const videoSrc = videos[currentScenario];
-    if (!videoSrc) return;
+
+    if (!videoSrc) {
+      console.warn(`⚠️ No video found for scenario: ${currentScenario}`);
+      console.log('Available videos:', Object.keys(videos));
+      return;
+    }
+
+    console.log('✅ Video source found:', videoSrc);
 
     const currentVideo = activeVideoIndex === 0 ? video1Ref.current : video2Ref.current;
     const nextVideo = activeVideoIndex === 0 ? video2Ref.current : video1Ref.current;
 
-    if (!nextVideo || !currentVideo) return;
+    if (!nextVideo || !currentVideo) {
+      console.error('❌ Video refs not available');
+      return;
+    }
 
-    console.log(`🎬 ${currentScenario}`);
+    console.log(`📺 Switching from video${activeVideoIndex === 0 ? 1 : 2} to video${activeVideoIndex === 0 ? 2 : 1}`);
 
     nextVideo.src = videoSrc;
     nextVideo.loop = currentScenario === "idle";
@@ -277,40 +482,45 @@ export default function ArenaFrame({
       }).catch(e => console.error("❌ Play error:", e));
     };
 
+    const handleError = (e) => {
+      console.error('❌ Video load error:', e);
+      console.error('Failed video src:', videoSrc);
+    };
+
     nextVideo.addEventListener('canplaythrough', handleCanPlay, { once: true });
+    nextVideo.addEventListener('error', handleError, { once: true });
 
     return () => {
       nextVideo.removeEventListener('canplaythrough', handleCanPlay);
+      nextVideo.removeEventListener('error', handleError);
     };
 
-  }, [currentScenario, hasJoined]);
+  }, [currentScenario, hasJoined, videos]);
 
   const handleVideoEnded = useCallback(() => {
-    console.log('🏁 END:', currentScenario);
+    const currentVideo = activeVideoIndex === 0 ? video1Ref.current : video2Ref.current;
 
-    let nextScenario = null;
+    console.log('🏁 Video ended:', currentScenario);
+    console.log('📊 Video duration:', currentVideo?.duration);
+    console.log('📊 Current time:', currentVideo?.currentTime);
 
-    if (pendingScenario) {
-      nextScenario = pendingScenario;
-      setCurrentScenario(pendingScenario);
-      setPendingScenario(null);
-    } else if (currentScenario.includes("Pump") || currentScenario.includes("Dump")) {
-      const token = currentScenario.includes("sol") ? "sol" :
-          currentScenario.includes("bnb") ? "bnb" : "both";
-      nextScenario = `${token}Back`;
-      setCurrentScenario(nextScenario);
-    } else if (currentScenario.includes("Back")) {
-      nextScenario = "idle";
-      setCurrentScenario(nextScenario);
+    const attackScenarios = ['tokenAPump', 'tokenBPump', 'tokenACombo', 'tokenBCombo'];
+    const backScenarios = ['tokenABack', 'tokenBBack'];
+
+    // ✅ After attack → play "back to stance"
+    if (attackScenarios.includes(currentScenario) && currentVideo?.duration > 1) {
+      console.log('↩️ Playing back to stance animation');
+
+      // Determine which token attacked
+      const backScenario = currentScenario.includes('tokenA') ? 'tokenABack' : 'tokenBBack';
+      setCurrentScenario(backScenario);
     }
-
-    if (nextScenario && syncMode && socketRef.current && testingMode) {
-      socketRef.current.emit('video_ended', {
-        scenario: currentScenario,
-        nextScenario: nextScenario
-      });
+    // ✅ After "back to stance" → return to idle
+    else if (backScenarios.includes(currentScenario)) {
+      console.log('⏪ Returning to idle');
+      setCurrentScenario('idle');
     }
-  }, [pendingScenario, currentScenario, syncMode, testingMode]);
+  }, [currentScenario, activeVideoIndex]);
 
   useEffect(() => {
     if (!hasJoined) return;
@@ -327,67 +537,15 @@ export default function ArenaFrame({
     };
   }, [handleVideoEnded, hasJoined]);
 
-  const getTokenStatus = (token) => {
-    const isSol = token.label.toLowerCase().includes('sol');
+  const getTokenStatus = (tokenName) => {
     const scenario = currentScenario.toLowerCase();
-    const isRelevantToken = scenario.includes(isSol ? 'sol' : 'bnb') || scenario.includes('both');
-
+    const isRelevantToken = scenario.includes(tokenName.toLowerCase());
     return { isActive: isRelevantToken };
   };
 
-  const handleScenarioChange = useCallback((newScenario) => {
-    const now = Date.now();
-    if (now - lastScenarioChangeRef.current < 500) return;
+  const shouldShake = currentScenario.includes('Pump') || currentScenario.includes('Combo');
 
-    if (syncMode && socketRef.current && testingMode) {
-      console.log('🎮 Button:', newScenario);
-      lastScenarioChangeRef.current = now;
-      socketRef.current.emit('test_scenario', newScenario);
-      return;
-    }
-
-    if (newScenario === currentScenario) return;
-
-    lastScenarioChangeRef.current = now;
-    setPendingScenario(newScenario);
-
-    const currentVideo = activeVideoIndex === 0 ? video1Ref.current : video2Ref.current;
-    if (currentVideo) currentVideo.loop = false;
-  }, [currentScenario, syncMode, testingMode, activeVideoIndex]);
-
-  useEffect(() => {
-    if (!testingMode || !hasJoined) return;
-
-    const handleKeyPress = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-      const keyMap = {
-        '1': 'idle', '2': 'solPump', '3': 'bnbPump', '4': 'bothPump',
-        '5': 'solDump', '6': 'bnbDump', '7': 'bothDump',
-        ' ': () => {
-          if (syncMode && socketRef.current) {
-            socketRef.current.emit('reset_health');
-          } else {
-            setHealth({ sol: 100, bnb: 100 });
-          }
-        },
-      };
-
-      const action = keyMap[e.key];
-      if (action) {
-        e.preventDefault();
-        if (typeof action === 'function') action();
-        else handleScenarioChange(action);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [testingMode, handleScenarioChange, syncMode, hasJoined]);
-
-  const shouldShake = currentScenario.includes('Pump') || currentScenario.includes('Dump');
-
-  // ✅ JOIN ARENA SCREEN
+  // JOIN SCREEN
   if (!hasJoined) {
     return (
         <section className="relative w-full h-screen flex items-center justify-center bg-[#0b0d10] overflow-hidden">
@@ -416,24 +574,19 @@ export default function ArenaFrame({
             .animate-slide-in { animation: slideIn 0.8s ease-out; }
           `}</style>
 
-          {/* Background */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#0a0c0f] via-[#0f1318] to-[#1a1f28]" />
 
-          {/* Grid pattern */}
           <div className="absolute inset-0 opacity-10" style={{
             backgroundImage: `repeating-linear-gradient(0deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 40px)`,
             backgroundSize: '40px 40px'
           }} />
 
-          {/* Vignette */}
           <div className="absolute inset-0" style={{
             background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.7) 100%)'
           }} />
 
-          {/* Content */}
           <div className="relative z-10 flex flex-col items-center gap-12 animate-slide-in">
 
-            {/* Title */}
             <div className="text-center">
               <div className="pixel-font text-[#14F195] text-[32px] mb-4" style={{
                 textShadow: '4px 4px 0 rgba(0,0,0,0.8), 0 0 20px rgba(20, 241, 149, 0.5)'
@@ -447,10 +600,12 @@ export default function ArenaFrame({
               </div>
             </div>
 
-            {/* Token Logos */}
             <div className="flex items-center gap-16">
               <div className="animate-float">
-                <img src="/images/solana_logo.png" alt="Solana" className="w-24 h-24 drop-shadow-[0_0_20px_rgba(20,241,149,0.6)]" />
+                <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-green-700 rounded-full flex items-center justify-center text-white font-bold text-2xl border-4 border-green-900"
+                     style={{ boxShadow: '0 0 40px rgba(34, 197, 94, 0.5)' }}>
+                  A
+                </div>
               </div>
               <div className="pixel-font text-[48px] text-red-500" style={{
                 textShadow: '4px 4px 0 rgba(0,0,0,0.8)'
@@ -458,11 +613,13 @@ export default function ArenaFrame({
                 VS
               </div>
               <div className="animate-float" style={{ animationDelay: '0.5s' }}>
-                <img src="/images/bnb_logo.png" alt="BNB" className="w-24 h-24 drop-shadow-[0_0_20px_rgba(240,185,11,0.6)]" />
+                <div className="w-24 h-24 bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-full flex items-center justify-center text-white font-bold text-2xl border-4 border-yellow-900"
+                     style={{ boxShadow: '0 0 40px rgba(234, 179, 8, 0.5)' }}>
+                  B
+                </div>
               </div>
             </div>
 
-            {/* Join Button */}
             {!isLoading ? (
                 <button
                     onClick={handleJoinArena}
@@ -477,30 +634,40 @@ export default function ArenaFrame({
                   JOIN ARENA
                 </button>
             ) : (
-                <div className="pixel-font text-[16px] px-12 py-6 bg-gray-700 text-white border-4 border-gray-600"
-                     style={{ boxShadow: '6px 6px 0 rgba(0,0,0,0.5)' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-[#14F195]" style={{ animation: 'blink 0.8s infinite' }} />
-                    LOADING...
+                <div className="flex flex-col items-center gap-4">
+                  <div className="pixel-font text-[16px] px-12 py-6 bg-gray-700 text-white border-4 border-gray-600"
+                       style={{ boxShadow: '6px 6px 0 rgba(0,0,0,0.5)' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 bg-[#14F195]" style={{ animation: 'blink 0.8s infinite' }} />
+                      LOADING...
+                    </div>
+                  </div>
+
+                  <div className="w-64 h-6 bg-black border-4 border-gray-700 p-1">
+                    <div
+                        className="h-full bg-gradient-to-r from-[#14F195] to-[#0ea270] transition-all duration-300"
+                        style={{ width: `${loadingProgress}%` }}
+                    />
+                  </div>
+                  <div className="pixel-font text-[10px] text-gray-400">
+                    {Math.round(loadingProgress)}%
                   </div>
                 </div>
             )}
 
-            {/* Info */}
             <div className="pixel-font text-[8px] text-gray-500 text-center max-w-md">
               <div style={{ animation: 'blink 2s infinite' }}>▼ PRESS TO ENTER ▼</div>
             </div>
           </div>
 
-          {/* Bottom decoration */}
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pixel-font text-[8px] text-gray-600">
-            POWERED BY BLOCKCHAIN TECHNOLOGY
+            POWERED BY REAL-TIME BLOCKCHAIN DATA
           </div>
         </section>
     );
   }
 
-  // ✅ MAIN ARENA (nakon join-a)
+  // MAIN ARENA
   return (
       <section className={cls(
           "relative w-full h-screen grid place-items-center bg-[#0b0d10] overflow-hidden",
@@ -529,10 +696,20 @@ export default function ArenaFrame({
           80% { transform: translate(4px, -3px); }
           90% { transform: translate(-2px, 2px); }
         }
+        @keyframes flash {
+          0%, 100% { opacity: 0; }
+          50% { opacity: 1; }
+        }
+        @keyframes floatUp {
+          0% { transform: translateY(0); opacity: 1; }
+          100% { transform: translateY(-50px); opacity: 0; }
+        }
         .animate-float { animation: float 3s ease-in-out infinite; }
         .animate-screen-shake { animation: screenShake 0.5s ease-in-out infinite; }
         .pixel-font { font-family: 'Press Start 2P', monospace; }
       `}</style>
+
+        <ScreenFlash isActive={flashEffect.active} color={flashEffect.color} />
 
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0c0f] via-[#0f1318] to-[#1a1f28]" />
         <div className="absolute inset-0 opacity-10" style={{
@@ -543,6 +720,21 @@ export default function ArenaFrame({
           background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.5) 100%)'
         }} />
 
+        <DamagePopup damage={damagePopup.tokenA} position="left" />
+        <DamagePopup damage={damagePopup.tokenB} position="right" />
+
+        <StatsPanel score={score} round={round} />
+
+        <div className="absolute top-16 left-6 z-20 flex flex-col gap-2">
+          <PriceTicker token={tokenConfig.tokenA.symbol} price={marketData.tokenA.price} change={marketData.tokenA.change24h} />
+        </div>
+        <div className="absolute top-16 right-6 z-20 flex flex-col gap-2">
+          <PriceTicker token={tokenConfig.tokenB.symbol} price={marketData.tokenB.price} change={marketData.tokenB.change24h} />
+        </div>
+
+        <ComboDisplay combo={combo.tokenA} side="left" />
+        <ComboDisplay combo={combo.tokenB} side="right" />
+
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pixel-font">
           <div className="relative flex items-center gap-3 px-6 py-3 bg-black border-4 border-gray-800">
             {syncMode && (
@@ -550,7 +742,7 @@ export default function ArenaFrame({
                   <div className={cls("w-3 h-3", isConnected ? "bg-green-500" : "bg-red-500")}
                        style={{ animation: 'blink 2s infinite' }} />
                   <span className={cls("text-[10px]", isConnected ? "text-green-400" : "text-red-400")}>
-                    {isConnected ? '🌐 SYNC' : '⚠️ OFFLINE'}
+                    {isConnected ? '🌐 LIVE' : '⚠️ OFFLINE'}
                   </span>
                   {isConnected && userCount > 0 && <span className="text-[8px] text-gray-500">[{userCount} 👥]</span>}
                   <div className="w-1 h-4 bg-gray-600" />
@@ -561,19 +753,19 @@ export default function ArenaFrame({
           </div>
         </div>
 
-        <div className="absolute top-20 left-6 z-20">
-          <HealthBar health={health.sol} side="left" label="SOLANA" lastDamage={lastDamage.sol} />
+        <div className="absolute top-28 left-6 z-20">
+          <HealthBar health={health.tokenA} side="left" label={tokenConfig.tokenA.symbol} lastDamage={lastDamage.tokenA} />
         </div>
 
-        <div className="absolute top-20 right-6 z-20">
-          <HealthBar health={health.bnb} side="right" label="BNB" lastDamage={lastDamage.bnb} />
+        <div className="absolute top-28 right-6 z-20">
+          <HealthBar health={health.tokenB} side="right" label={tokenConfig.tokenB.symbol} lastDamage={lastDamage.tokenB} />
         </div>
 
         <div className="absolute left-6 top-1/2 -translate-y-1/2 hidden sm:block z-20">
-          <TokenShield {...leftToken} {...getTokenStatus(leftToken)} marketChange={marketData.sol.change24h} />
+          <TokenShield label={tokenConfig.tokenA.symbol} tone="#14F195" {...getTokenStatus('tokenA')} marketChange={marketData.tokenA.change24h} />
         </div>
         <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden sm:block z-20">
-          <TokenShield {...rightToken} {...getTokenStatus(rightToken)} marketChange={marketData.bnb.change24h} />
+          <TokenShield label={tokenConfig.tokenB.symbol} tone="#F0B90B" {...getTokenStatus('tokenB')} marketChange={marketData.tokenB.change24h} />
         </div>
 
         <div style={{
@@ -623,31 +815,142 @@ export default function ArenaFrame({
           </div>
         </div>
 
-        {testingMode && (
-            <div className="absolute bottom-6 right-6 z-30 pixel-font">
-              <div className="bg-black border-4 border-gray-700 p-3" style={{ minWidth: '200px' }}>
-                <div className="text-[8px] text-yellow-400 mb-3">
-                  🧪 TEST | {currentScenario}
+        {/* 🎮 MOCK CONTROL PANEL */}
+        {syncMode && tokenConfig.tokenA?.isMock && (
+            <div className="absolute bottom-6 left-6 z-30 pixel-font">
+              <div className="bg-black border-4 border-purple-700 p-3" style={{ minWidth: '250px' }}>
+                <div className="text-[10px] text-purple-400 mb-3 flex items-center gap-2">
+                  🎲 MOCK CONTROLS
                 </div>
-                <div className="flex flex-col gap-2">
-                  {[
-                    { key: "idle", label: "IDLE", s: "1" },
-                    { key: "solPump", label: "SOL+", s: "2" },
-                    { key: "bnbPump", label: "BNB+", s: "3" },
-                    { key: "bothPump", label: "BOTH+", s: "4" },
-                    { key: "solDump", label: "SOL-", s: "5" },
-                    { key: "bnbDump", label: "BNB-", s: "6" },
-                    { key: "bothDump", label: "BOTH-", s: "7" },
-                  ].map(({ key, label, s }) => (
-                      <button key={key} onClick={() => handleScenarioChange(key)}
-                              className={cls("px-3 py-2 text-[8px] border-2",
-                                  currentScenario === key
-                                      ? "bg-yellow-500 text-black border-yellow-700"
-                                      : "bg-gray-800 text-white border-gray-600"
-                              )}>
-                        {label} [{s}]
+
+                {/* ✅ MODE INDICATOR */}
+                <div className="mb-3 p-2 bg-gray-900 border border-gray-700">
+                  <div className="text-[7px] text-yellow-400">
+                    MODE: MANUAL
+                  </div>
+                  <div className="text-[6px] text-gray-400 mt-1">
+                    Click buttons to trigger attacks
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  {/* Token A Controls */}
+                  <div>
+                    <div className="text-[8px] text-green-400 mb-1">{tokenConfig.tokenA.symbol}</div>
+                    <div className="flex gap-1">
+                      <button
+                          onClick={() => {
+                            console.log('🎮 Manual PUMP tokenA');
+                            socketRef.current?.emit('mock_pump', { token: 'tokenA', intensity: 1 });
+                          }}
+                          className="px-2 py-1 text-[7px] bg-green-600 text-white border-2 border-green-800 hover:bg-green-700"
+                      >
+                        📈 PUMP
                       </button>
-                  ))}
+                      <button
+                          onClick={() => {
+                            console.log('🎮 Manual DUMP tokenA');
+                            socketRef.current?.emit('mock_dump', { token: 'tokenA', intensity: 1 });
+                          }}
+                          className="px-2 py-1 text-[7px] bg-red-600 text-white border-2 border-red-800 hover:bg-red-700"
+                      >
+                        📉 DUMP
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Token B Controls */}
+                  <div>
+                    <div className="text-[8px] text-yellow-400 mb-1">{tokenConfig.tokenB.symbol}</div>
+                    <div className="flex gap-1">
+                      <button
+                          onClick={() => {
+                            console.log('🎮 Manual PUMP tokenB');
+                            socketRef.current?.emit('mock_pump', { token: 'tokenB', intensity: 1 });
+                          }}
+                          className="px-2 py-1 text-[7px] bg-green-600 text-white border-2 border-green-800 hover:bg-green-700"
+                      >
+                        📈 PUMP
+                      </button>
+                      <button
+                          onClick={() => {
+                            console.log('🎮 Manual DUMP tokenB');
+                            socketRef.current?.emit('mock_dump', { token: 'tokenB', intensity: 1 });
+                          }}
+                          className="px-2 py-1 text-[7px] bg-red-600 text-white border-2 border-red-800 hover:bg-red-700"
+                      >
+                        📉 DUMP
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Manual Battle Trigger */}
+                  <div className="border-t border-gray-700 pt-2">
+                    <button
+                        onClick={() => {
+                          console.log('⚔️ Manual battle trigger');
+                          socketRef.current?.emit('manual_battle');
+                        }}
+                        className="w-full px-3 py-2 text-[8px] bg-red-600 text-white border-2 border-red-800 hover:bg-red-700 font-bold"
+                    >
+                      ⚔️ TRIGGER BATTLE NOW
+                    </button>
+                  </div>
+
+                  {/* Quick Scenarios */}
+                  <div className="border-t border-gray-700 pt-2">
+                    <div className="text-[7px] text-gray-400 mb-2">QUICK SCENARIOS</div>
+                    <div className="flex flex-col gap-1">
+                      <button
+                          onClick={() => {
+                            socketRef.current?.emit('mock_pump', { token: 'tokenA', intensity: 3 });
+                            setTimeout(() => socketRef.current?.emit('manual_battle'), 500);
+                          }}
+                          className="px-2 py-1 text-[7px] bg-green-700 text-white border border-green-900"
+                      >
+                        {tokenConfig.tokenA.symbol} MASSIVE PUMP
+                      </button>
+                      <button
+                          onClick={() => {
+                            socketRef.current?.emit('mock_dump', { token: 'tokenB', intensity: 3 });
+                            setTimeout(() => socketRef.current?.emit('manual_battle'), 500);
+                          }}
+                          className="px-2 py-1 text-[7px] bg-red-700 text-white border border-red-900"
+                      >
+                        {tokenConfig.tokenB.symbol} MASSIVE DUMP
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Reset */}
+                  <div className="border-t border-gray-700 pt-2">
+                    <button
+                        onClick={() => socketRef.current?.emit('reset_game')}
+                        className="w-full px-2 py-1 text-[7px] bg-gray-700 text-white border border-gray-900"
+                    >
+                      🔄 RESET GAME
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        )}
+
+        {gameOver && (
+            <div className="absolute inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center">
+              <div className="text-center pixel-font">
+                <div className="text-[48px] text-yellow-400 mb-8" style={{
+                  textShadow: '4px 4px 0 rgba(0,0,0,0.8)'
+                }}>
+                  {gameOver === 'tokenA'
+                      ? `🏆 ${tokenConfig.tokenA.symbol} WINS!`
+                      : `🏆 ${tokenConfig.tokenB.symbol} WINS!`}
+                </div>
+                <div className="text-[16px] text-white">
+                  GAME OVER - BEST OF {tokenConfig.roundsToWin * 2 - 1}
+                </div>
+                <div className="text-[12px] text-gray-400 mt-4">
+                  Final Score: {score.tokenA} - {score.tokenB}
                 </div>
               </div>
             </div>

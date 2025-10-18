@@ -11,24 +11,27 @@ export default function App() {
                 arenaOpacity={0.8}
                 arenaFit="cover"
                 aspect="16/9"
-
                 testingMode={true}
-
-                // 🌐 FULL SYNC - DODAJ OVO!
                 syncMode={true}
-
+                serverUrl="http://localhost:3001"  // ✅ Dodaj ovo!
 
                 videos={{
+                    // ✅ UPDATED KEYS - MORAJU ODGOVARATI SERVER SCENARIO
                     idle: "/videos/solana-vs-bnb.mp4",
-                    solPump: "/videos/sol-winning.mp4",
-                    bnbPump: "/videos/bnb-winning.mp4",
-                    solDump: "/videos/sol-losing.mp4",
-                    bnbDump: "/videos/bnb-losing.mp4",
-                    bothPump: "/videos/both-pumping.mp4",
-                    bothDump: "/videos/both-dumping.mp4",
-                    solBack: "/videos/solana-vs-bnb.mp4",
-                    bnbBack: "/videos/bnb-winning-backto-stance.mp4",
-                    bothBack: "/videos/solana-vs-bnb.mp4",
+
+                    // Token A videos (SOLKILL)
+                    tokenAPump: "/videos/sol-winning.mp4",
+                    tokenACombo: "/videos/sol-winning.mp4",
+                    tokenAVictory: "/videos/sol-winning.mp4",
+
+                    // Token B videos (PUMPSUP)
+                    tokenBPump: "/videos/bnb-winning.mp4",
+                    tokenBCombo: "/videos/bnb-winning.mp4",
+                    tokenBVictory: "/videos/bnb-winning.mp4",
+
+                    // Back to stance (opciono)
+                    tokenABack: "/videos/solana-vs-bnb.mp4",
+                    tokenBBack: "/videos/bnb-winning-backto-stance.mp4",
                 }}
 
                 cryptoConfig={{

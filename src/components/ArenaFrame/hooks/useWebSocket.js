@@ -1,3 +1,4 @@
+// useWebSocket.js - FIXED VERSION with Memory Leak Prevention
 import { useState, useRef, useEffect } from 'react';
 import io from 'socket.io-client';
 import {
@@ -18,7 +19,6 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
     const [combo, setCombo] = useState(INITIAL_COMBO);
     const [score, setScore] = useState(INITIAL_SCORE);
     const [round, setRound] = useState(1);
-    const [currentScenario, setCurrentScenarioLocal] = useState('idle');
     const [lastDamage, setLastDamage] = useState(INITIAL_DAMAGE);
     const [damagePopup, setDamagePopup] = useState({ tokenA: null, tokenB: null });
     const [flashEffect, setFlashEffect] = useState({ active: false, color: 'red' });
@@ -26,9 +26,18 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
 
     const socketRef = useRef(null);
 
-    // ✅ Wrapper to update both local state and video player
+    // ✅ NEW: Track timeouts for cleanup
+    const timeoutsRef = useRef([]);
+
+    // ✅ NEW: Helper to manage timeouts
+    const setSafeTimeout = (callback, delay) => {
+        const id = setTimeout(callback, delay);
+        timeoutsRef.current.push(id);
+        return id;
+    };
+
+    // ✅ IMPROVED: Direct scenario update (no local state duplication)
     const updateScenario = (scenario, source = 'websocket') => {
-        setCurrentScenarioLocal(scenario);
         if (setCurrentScenario) {
             setCurrentScenario(scenario, source);
         }
@@ -36,6 +45,8 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
 
     useEffect(() => {
         if (!syncMode || !hasJoined) return;
+
+        console.log('🌐 Connecting to WebSocket:', serverUrl);
 
         const socket = io(serverUrl, {
             transports: ['websocket'],
@@ -45,6 +56,10 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
         });
 
         socketRef.current = socket;
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🔌 CONNECTION EVENTS
+        // ═══════════════════════════════════════════════════════════════
 
         socket.on('connect', () => {
             console.log('✅ Connected to Battle Server');
@@ -56,8 +71,12 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
             setIsConnected(false);
         });
 
+        // ═══════════════════════════════════════════════════════════════
+        // 📦 INITIAL STATE
+        // ═══════════════════════════════════════════════════════════════
+
         socket.on('initial_state', (state) => {
-            console.log('📦 Initial state:', state);
+            console.log('📦 Initial state received');
 
             if (state.config) {
                 setTokenConfig({
@@ -72,11 +91,17 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
             setRound(state.currentRound);
             setScore(state.score);
             setMarketData(state.marketData);
-            updateScenario(state.scenario, 'websocket'); // ✅ Use wrapper
+            updateScenario(state.scenario, 'websocket');
             setLastDamage(state.lastDamage);
         });
 
+        // ═══════════════════════════════════════════════════════════════
+        // ⚔️ BATTLE UPDATE
+        // ═══════════════════════════════════════════════════════════════
+
         socket.on('battle_update', (update) => {
+            console.log('⚔️ Battle update received:', update.scenario);
+
             setHealth(update.health);
             setMarketData(update.marketData);
             setCombo(update.combo);
@@ -84,46 +109,78 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
             setLastDamage(update.lastDamage);
             setRound(update.currentRound);
 
+            // ✅ FIXED: Damage popup with safe timeout
             if (update.defender === 'tokenA') {
                 setDamagePopup(prev => ({ ...prev, tokenA: update.damage }));
-                setTimeout(() => setDamagePopup(prev => ({ ...prev, tokenA: null })), 1500);
+                setSafeTimeout(() => {
+                    setDamagePopup(prev => ({ ...prev, tokenA: null }));
+                }, 1500);
             } else if (update.defender === 'tokenB') {
                 setDamagePopup(prev => ({ ...prev, tokenB: update.damage }));
-                setTimeout(() => setDamagePopup(prev => ({ ...prev, tokenB: null })), 1500);
+                setSafeTimeout(() => {
+                    setDamagePopup(prev => ({ ...prev, tokenB: null }));
+                }, 1500);
             }
 
+            // Scenario update
             if (update.scenario) {
-                updateScenario(update.scenario, 'websocket'); // ✅ Use wrapper
+                updateScenario(update.scenario, 'websocket');
                 if (update.scenario.includes('Victory')) {
                     setGameOver(update.attacker);
                 }
             }
 
+            // ✅ FIXED: Flash effect with safe timeout
             setFlashEffect({ active: true, color: 'red' });
-            setTimeout(() => setFlashEffect({ active: false, color: 'red' }), 300);
+            setSafeTimeout(() => {
+                setFlashEffect({ active: false, color: 'red' });
+            }, 300);
         });
 
+        // ═══════════════════════════════════════════════════════════════
+        // 🔄 GAME RESET
+        // ═══════════════════════════════════════════════════════════════
+
         socket.on('game_reset', (data) => {
+            console.log('🔄 Game reset received');
             setHealth(data.health);
             setRound(data.currentRound);
             setScore(data.score);
             setGameOver(null);
             setCombo(INITIAL_COMBO);
-            updateScenario('idle', 'websocket'); // ✅ Use wrapper
+            updateScenario('idle', 'websocket');
         });
 
+        // ═══════════════════════════════════════════════════════════════
+        // 🎬 SCENARIO CHANGE
+        // ═══════════════════════════════════════════════════════════════
+
         socket.on('scenario_change', ({ scenario }) => {
-            if (scenario !== currentScenario) {
-                updateScenario(scenario, 'websocket'); // ✅ Use wrapper
-            }
+            console.log('🎬 Scenario change received:', scenario);
+            updateScenario(scenario, 'websocket');
         });
+
+        // ═══════════════════════════════════════════════════════════════
+        // 👥 USER COUNT
+        // ═══════════════════════════════════════════════════════════════
 
         socket.on('user_count', (count) => {
             setUserCount(count);
         });
 
-        return () => socket.disconnect();
-    }, [syncMode, serverUrl, hasJoined, setCurrentScenario, currentScenario]);
+        // ═══════════════════════════════════════════════════════════════
+        // 🧹 CLEANUP
+        // ═══════════════════════════════════════════════════════════════
+
+        return () => {
+            console.log('🧹 Cleaning up WebSocket connection');
+            socket.disconnect();
+
+            // ✅ FIXED: Clear all timeouts to prevent memory leaks
+            timeoutsRef.current.forEach(clearTimeout);
+            timeoutsRef.current = [];
+        };
+    }, [syncMode, serverUrl, hasJoined, setCurrentScenario]);
 
     return {
         socketRef,
@@ -135,8 +192,6 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
         combo,
         score,
         round,
-        currentScenario,
-        // ✅ No longer returning setCurrentScenario - it comes from video player
         lastDamage,
         damagePopup,
         flashEffect,

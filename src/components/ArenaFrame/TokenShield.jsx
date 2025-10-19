@@ -30,7 +30,12 @@ export function TokenShield({
                 style={isActive ? { borderColor: tone, boxShadow: `0 0 30px ${tone}` } : {}}
             >
                 {icon ? (
-                    <img src={icon} alt={label} className="w-16 h-16 object-contain" />
+                    // ✅ NEW: Check if it's URL or emoji
+                    icon.startsWith('/') || icon.startsWith('http') ? (
+                        <img src={icon} alt={label} className="w-16 h-16 object-contain" />
+                    ) : (
+                        <span className="text-6xl" role="img" aria-label={label}>{icon}</span>
+                    )
                 ) : (
                     <span className="text-white text-xl font-bold">{label.slice(0, 3)}</span>
                 )}

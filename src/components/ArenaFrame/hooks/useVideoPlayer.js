@@ -1,3 +1,4 @@
+// useVideoPlayer.js - FIXED VERSION with Queue System
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 export function useVideoPlayer(hasJoined, videos) {
@@ -5,31 +6,44 @@ export function useVideoPlayer(hasJoined, videos) {
     const video2Ref = useRef(null);
     const [activeVideoIndex, setActiveVideoIndex] = useState(0);
     const [currentScenario, setCurrentScenario] = useState('idle');
+
+    // Refs for state tracking
     const lastScenarioRef = useRef('idle');
     const isLoadingRef = useRef(false);
     const loadingScenarioRef = useRef(null);
     const currentScenarioRef = useRef('idle');
-    const isPlayingSequenceRef = useRef(false); // Track if we're in a video sequence
+    const isPlayingSequenceRef = useRef(false);
 
-    // ✅ Wrapper for setCurrentScenario with logging and sequence protection
+    // ✅ NEW: Queue system for scenarios during sequences
+    const scenarioQueueRef = useRef([]);
+
+    // ✅ IMPROVED: setCurrentScenario with queue support
     const setCurrentScenarioSafe = useCallback((newScenario, source = 'unknown') => {
-        console.log('🔴 setCurrentScenario called:', {
+        console.log('🔴 setCurrentScenario:', {
             from: currentScenarioRef.current,
             to: newScenario,
             source,
-            isPlayingSequence: isPlayingSequenceRef.current
+            isPlayingSequence: isPlayingSequenceRef.current,
+            queueLength: scenarioQueueRef.current.length
         });
 
-        // If we're playing a video sequence and this is from WebSocket, ignore it
+        // Block WebSocket updates during video sequences
         if (isPlayingSequenceRef.current && source === 'websocket') {
-            console.log('⚠️ BLOCKED: WebSocket tried to change scenario during video sequence');
+            console.log('📋 Queued scenario from WebSocket:', newScenario);
+            // Only queue if not already in queue
+            if (!scenarioQueueRef.current.includes(newScenario)) {
+                scenarioQueueRef.current.push(newScenario);
+            }
             return;
         }
 
         setCurrentScenario(newScenario);
     }, []);
 
-    // Initial video setup
+    // ═══════════════════════════════════════════════════════════════
+    // 🎬 INITIAL VIDEO SETUP
+    // ═══════════════════════════════════════════════════════════════
+
     useEffect(() => {
         if (!hasJoined) return;
 
@@ -55,31 +69,24 @@ export function useVideoPlayer(hasJoined, videos) {
         return () => clearTimeout(timer);
     }, [hasJoined, videos.idle]);
 
-    // Video switching
+    // ═══════════════════════════════════════════════════════════════
+    // 🎬 VIDEO SWITCHING LOGIC
+    // ═══════════════════════════════════════════════════════════════
+
     useEffect(() => {
-        console.log('\n🔥🔥🔥 ========== useEffect START ========== 🔥🔥🔥');
-        console.log('📍 Dependencies:', { currentScenario, hasJoined, activeVideoIndex });
+        if (!hasJoined) return;
 
-        if (!hasJoined) {
-            console.log('❌ Not joined yet, exiting');
-            console.log('🔥🔥🔥 ========== useEffect END ========== 🔥🔥🔥\n');
-            return;
-        }
-
-        // ✅ Update ref immediately at the start
         const previousScenario = currentScenarioRef.current;
         currentScenarioRef.current = currentScenario;
 
-        console.log('🔄 Scenario tracking:', {
-            previousScenario,
-            newScenario: currentScenario,
-            refUpdated: currentScenarioRef.current
+        console.log('🔄 Scenario change:', {
+            from: previousScenario,
+            to: currentScenario
         });
 
         const videoSrc = videos[currentScenario];
         if (!videoSrc) {
-            console.log('❌ No video source for scenario:', currentScenario);
-            console.log('🔥🔥🔥 ========== useEffect END ========== 🔥🔥🔥\n');
+            console.warn('❌ No video source for scenario:', currentScenario);
             return;
         }
 
@@ -87,23 +94,22 @@ export function useVideoPlayer(hasJoined, videos) {
         const nextVideo = activeVideoIndex === 0 ? video2Ref.current : video1Ref.current;
 
         if (!nextVideo || !currentVideo) {
-            console.log('❌ Video refs not ready');
-            console.log('🔥🔥🔥 ========== useEffect END ========== 🔥🔥🔥\n');
+            console.warn('❌ Video refs not ready');
             return;
         }
 
         // Skip if first render
         if (currentScenario === "idle" && !currentVideo.src) {
-            console.log('✅ CHECK: First render - skip video switching, use initial setup');
+            console.log('✅ First render - skip video switching');
             lastScenarioRef.current = currentScenario;
-            console.log('🔥🔥🔥 ========== useEffect END ========== 🔥🔥🔥\n');
             return;
         }
 
-        // IDLE HANDLING
-        if (currentScenario === "idle") {
-            console.log('🔵 IDLE SCENARIO DETECTED');
+        // ═══════════════════════════════════════════════════════════════
+        // 🔵 IDLE SCENARIO HANDLING
+        // ═══════════════════════════════════════════════════════════════
 
+        if (currentScenario === "idle") {
             const isIdleAlreadyPlaying = currentVideo.src &&
                 currentVideo.src.includes(videoSrc) &&
                 !currentVideo.paused &&
@@ -111,7 +117,6 @@ export function useVideoPlayer(hasJoined, videos) {
 
             if (isIdleAlreadyPlaying && lastScenarioRef.current === "idle") {
                 console.log('✅ Idle already playing correctly');
-                console.log('🔥🔥🔥 ========== useEffect END ========== 🔥🔥🔥\n');
                 return;
             }
 
@@ -130,7 +135,6 @@ export function useVideoPlayer(hasJoined, videos) {
                 } else {
                     lastScenarioRef.current = currentScenario;
                 }
-                console.log('🔥🔥🔥 ========== useEffect END ========== 🔥🔥🔥\n');
                 return;
             }
         }
@@ -141,25 +145,26 @@ export function useVideoPlayer(hasJoined, videos) {
             currentVideo.src.includes(videoSrc) &&
             lastScenarioRef.current === currentScenario) {
             console.log('❌ Same video already playing, skip');
-            console.log('🔥🔥🔥 ========== useEffect END ========== 🔥🔥🔥\n');
             return;
         }
 
         // Check if already loading
         if (isLoadingRef.current) {
             console.log('❌ Already loading video (' + loadingScenarioRef.current + '), blocking');
-            console.log('🔥🔥🔥 ========== useEffect END ========== 🔥🔥🔥\n');
             return;
         }
 
-        console.log('✅ ALL CHECKS PASSED - PROCEEDING WITH VIDEO SWITCH');
-        console.log('🎬 Switching to:', currentScenario, 'from:', lastScenarioRef.current);
+        console.log('✅ Proceeding with video switch to:', currentScenario);
 
-        // Mark attack scenarios as start of sequence
+        // ═══════════════════════════════════════════════════════════════
+        // 🎬 MARK ATTACK SCENARIOS AS SEQUENCE START
+        // ═══════════════════════════════════════════════════════════════
+
         const attackScenarios = [
             'tokenAPump', 'tokenBPump', 'tokenACombo', 'tokenBCombo',
             'tokenAVictory', 'tokenBVictory'
         ];
+
         if (attackScenarios.includes(currentScenario)) {
             console.log('🎬 Starting video sequence for:', currentScenario);
             isPlayingSequenceRef.current = true;
@@ -168,8 +173,10 @@ export function useVideoPlayer(hasJoined, videos) {
         isLoadingRef.current = true;
         loadingScenarioRef.current = currentScenario;
 
-        // Load and switch to new video
-        console.log('📹 Loading video:', videoSrc);
+        // ═══════════════════════════════════════════════════════════════
+        // 📹 LOAD AND SWITCH VIDEO
+        // ═══════════════════════════════════════════════════════════════
+
         nextVideo.src = videoSrc;
         nextVideo.loop = currentScenario === "idle";
         nextVideo.preload = "auto";
@@ -181,18 +188,7 @@ export function useVideoPlayer(hasJoined, videos) {
             loadingScenarioRef.current = null;
         };
 
-        const handleLoadStart = () => {
-            console.log('⏳ Started loading:', currentScenario);
-        };
-
-        const handleLoadedData = () => {
-            console.log('📦 Video data loaded:', currentScenario);
-        };
-
         nextVideo.addEventListener('error', handleError);
-        nextVideo.addEventListener('loadstart', handleLoadStart);
-        nextVideo.addEventListener('loadeddata', handleLoadedData);
-
         nextVideo.load();
 
         const handleCanPlay = () => {
@@ -202,11 +198,13 @@ export function useVideoPlayer(hasJoined, videos) {
             nextVideo.play().then(() => {
                 console.log('✅ Play started, fading videos');
 
+                // Fade transition
                 currentVideo.style.opacity = '0';
                 currentVideo.style.zIndex = '1';
                 nextVideo.style.opacity = '1';
                 nextVideo.style.zIndex = '2';
 
+                // ✅ FIXED: Set active index without triggering dependency
                 setActiveVideoIndex(prev => prev === 0 ? 1 : 0);
 
                 setTimeout(() => {
@@ -217,7 +215,7 @@ export function useVideoPlayer(hasJoined, videos) {
                 lastScenarioRef.current = currentScenario;
                 isLoadingRef.current = false;
                 loadingScenarioRef.current = null;
-                console.log('✅ SWITCH COMPLETE:', currentScenario);
+                console.log('✅ Switch complete:', currentScenario);
             }).catch(e => {
                 console.error("❌ Play error:", e);
                 isLoadingRef.current = false;
@@ -227,28 +225,23 @@ export function useVideoPlayer(hasJoined, videos) {
 
         nextVideo.addEventListener('canplaythrough', handleCanPlay, { once: true });
 
-        console.log('🔥🔥🔥 ========== useEffect END ========== 🔥🔥🔥\n');
-
         return () => {
             nextVideo.removeEventListener('canplaythrough', handleCanPlay);
             nextVideo.removeEventListener('error', handleError);
-            nextVideo.removeEventListener('loadstart', handleLoadStart);
-            nextVideo.removeEventListener('loadeddata', handleLoadedData);
         };
-    }, [currentScenario, hasJoined, videos, activeVideoIndex]);
+    }, [currentScenario, hasJoined, videos]); // ✅ FIXED: Removed activeVideoIndex
 
-    // Handle video ended
+    // ═══════════════════════════════════════════════════════════════
+    // 🎬 VIDEO ENDED HANDLER WITH QUEUE PROCESSING
+    // ═══════════════════════════════════════════════════════════════
+
     const handleVideoEnded = useCallback(() => {
         const scenario = currentScenarioRef.current;
         console.log('\n🎥 VIDEO ENDED:', scenario);
 
         const attackScenarios = [
-            'tokenAPump',
-            'tokenBPump',
-            'tokenACombo',
-            'tokenBCombo',
-            'tokenAVictory',
-            'tokenBVictory'
+            'tokenAPump', 'tokenBPump', 'tokenACombo', 'tokenBCombo',
+            'tokenAVictory', 'tokenBVictory'
         ];
         const backScenarios = ['tokenABack', 'tokenBBack'];
 
@@ -257,24 +250,41 @@ export function useVideoPlayer(hasJoined, videos) {
             console.log('⚔️ Attack ended, going to:', backScenario);
             isPlayingSequenceRef.current = true;
             setCurrentScenarioSafe(backScenario, 'video-sequence');
+
         } else if (backScenarios.includes(scenario)) {
             console.log('🔙 Back animation ended, returning to idle');
             setCurrentScenarioSafe('idle', 'video-sequence');
             isPlayingSequenceRef.current = false;
+
+            // ✅ NEW: Process queued scenarios
+            if (scenarioQueueRef.current.length > 0) {
+                const nextScenario = scenarioQueueRef.current.shift();
+                console.log('📋 Processing queued scenario:', nextScenario,
+                    '| Remaining in queue:', scenarioQueueRef.current.length);
+                setTimeout(() => {
+                    setCurrentScenarioSafe(nextScenario, 'queued');
+                }, 200); // Small delay for smooth transition
+            } else {
+                console.log('✅ Queue empty, staying at idle');
+            }
+
         } else {
             console.log('⚠️ Unknown scenario ended:', scenario);
             isPlayingSequenceRef.current = false;
         }
     }, [setCurrentScenarioSafe]);
 
-    // Attach event listeners
+    // ═══════════════════════════════════════════════════════════════
+    // 🎧 ATTACH EVENT LISTENERS
+    // ═══════════════════════════════════════════════════════════════
+
     useEffect(() => {
         if (!hasJoined) return;
 
         const video1 = video1Ref.current;
         const video2 = video2Ref.current;
 
-        console.log('🎧 Attaching event listeners to videos');
+        console.log('🎧 Attaching ended event listeners');
 
         if (video1) video1.addEventListener('ended', handleVideoEnded);
         if (video2) video2.addEventListener('ended', handleVideoEnded);
@@ -285,6 +295,32 @@ export function useVideoPlayer(hasJoined, videos) {
             if (video2) video2.removeEventListener('ended', handleVideoEnded);
         };
     }, [hasJoined, handleVideoEnded]);
+
+    // ═══════════════════════════════════════════════════════════════
+    // 📦 VIDEO PRELOADING
+    // ═══════════════════════════════════════════════════════════════
+
+    useEffect(() => {
+        if (!hasJoined) return;
+
+        const preloadList = [
+            videos.tokenAPump,
+            videos.tokenBPump,
+            videos.tokenABack,
+            videos.tokenBBack,
+            videos.tokenACombo,
+            videos.tokenBCombo
+        ];
+
+        console.log('📦 Preloading videos...');
+        preloadList.forEach(src => {
+            if (src) {
+                const video = document.createElement('video');
+                video.preload = 'auto';
+                video.src = src;
+            }
+        });
+    }, [hasJoined, videos]);
 
     return {
         video1Ref,

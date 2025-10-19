@@ -1,4 +1,4 @@
-// server.js - MAIN SERVER SA MOCK SUPPORT
+// server.cjs - MAIN SERVER SA MOCK SUPPORT - FIXED VERSION
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -76,7 +76,10 @@ setInterval(processBattleLoop, config.game.battleInterval);
 // Initialize
 fetchMarketDataLoop();
 
-// 🌐 SOCKET.IO
+// ═══════════════════════════════════════════════════════════════
+// 🌐 SOCKET.IO CONNECTION HANDLING
+// ═══════════════════════════════════════════════════════════════
+
 io.on('connection', (socket) => {
     connectedClients++;
     console.log(`✅ Client connected: ${socket.id} | Total: ${connectedClients}`);
@@ -86,10 +89,7 @@ io.on('connection', (socket) => {
     const state = gameEngine.getState();
     const marketCache = marketData.getCache();
 
-    console.log('🔍 CONFIG CHECK:');
-    console.log('TokenA icon:', config.tokens.tokenA.icon);
-    console.log('TokenB icon:', config.tokens.tokenB.icon);
-
+    // Send initial state to client
     socket.emit('initial_state', {
         config: {
             tokenA: config.tokens.tokenA,
@@ -111,19 +111,22 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handle disconnect
     socket.on('disconnect', () => {
         connectedClients--;
         console.log(`❌ Client disconnected: ${socket.id} | Total: ${connectedClients}`);
         io.emit('user_count', connectedClients);
     });
-// U socket.on('connection') delu, dodaj:
 
+    // Manual battle trigger
     socket.on('manual_battle', () => {
         if (config.mock.enabled && config.mock.manualMode) {
             console.log('⚔️ Manual battle triggered by client');
-            processBattleLoop(); // Force battle check
+            processBattleLoop();
         }
     });
+
+    // Game reset
     socket.on('reset_game', () => {
         gameEngine.resetGame();
         if (config.mock.enabled) {
@@ -137,7 +140,17 @@ io.on('connection', (socket) => {
         console.log('🔄 Game manually reset');
     });
 
-    // 🎮 MOCK CONTROLS
+    // Test scenario
+    socket.on('test_scenario', (scenario) => {
+        gameEngine.state.currentScenario = scenario;
+        io.emit('scenario_change', { scenario });
+        console.log(`🎮 Test scenario: ${scenario}`);
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🎮 MOCK CONTROLS (Socket Events)
+    // ═══════════════════════════════════════════════════════════════
+
     if (config.mock.enabled) {
         socket.on('mock_pump', (data) => {
             marketData.forcePump(data.token, data.intensity || 1);
@@ -155,15 +168,13 @@ io.on('connection', (socket) => {
             marketData.setVolatility(value);
         });
     }
-
-    socket.on('test_scenario', (scenario) => {
-        gameEngine.state.currentScenario = scenario;
-        io.emit('scenario_change', { scenario });
-        console.log(`🎮 Test scenario: ${scenario}`);
-    });
 });
 
-// 📊 API ENDPOINTS
+// ═══════════════════════════════════════════════════════════════
+// 📊 HTTP API ENDPOINTS
+// ═══════════════════════════════════════════════════════════════
+
+// Root endpoint
 app.get('/', (req, res) => {
     res.json({
         status: 'running',
@@ -177,6 +188,24 @@ app.get('/', (req, res) => {
     });
 });
 
+// Health check endpoints (for hosting platforms like Render)
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        uptime: process.uptime(),
+        timestamp: Date.now()
+    });
+});
+
+app.get('/api/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        uptime: process.uptime(),
+        timestamp: Date.now()
+    });
+});
+
+// Game status endpoint
 app.get('/status', (req, res) => {
     const state = gameEngine.getState();
     const marketCache = marketData.getCache();
@@ -205,7 +234,24 @@ app.get('/status', (req, res) => {
     });
 });
 
-// 🎮 MOCK CONTROL ENDPOINTS
+// Admin reset endpoint
+app.post('/admin/reset', (req, res) => {
+    gameEngine.resetGame();
+    if (config.mock.enabled) {
+        marketData.reset();
+    }
+    io.emit('game_reset', {
+        health: gameEngine.getState().health,
+        currentRound: 1,
+        score: { tokenA: 0, tokenB: 0 }
+    });
+    res.json({ success: true, message: 'Game reset' });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 🎮 MOCK CONTROL ENDPOINTS (HTTP API)
+// ═══════════════════════════════════════════════════════════════
+
 if (config.mock.enabled) {
     app.post('/mock/pump/:token', (req, res) => {
         const token = req.params.token;
@@ -225,7 +271,7 @@ if (config.mock.enabled) {
 
     app.post('/mock/trend/:token', (req, res) => {
         const token = req.params.token;
-        const trend = req.body.trend; // neutral, pumping, dumping
+        const trend = req.body.trend;
         marketData.setTrend(token, trend);
         res.json({ success: true, token, trend });
     });
@@ -243,53 +289,9 @@ if (config.mock.enabled) {
     });
 }
 
-app.post('/admin/reset', (req, res) => {
-    gameEngine.resetGame();
-    if (config.mock.enabled) {
-        marketData.reset();
-    }
-    io.emit('game_reset', {
-        health: gameEngine.getState().health,
-        currentRound: 1,
-        score: { tokenA: 0, tokenB: 0 }
-    });
-    res.json({ success: true, message: 'Game reset' });
-});
-
-// 📊 API ENDPOINTS
-app.get('/', (req, res) => {
-    res.json({
-        status: 'running',
-        message: 'Custom Token Battle Arena',
-        version: '2.0.0',
-        mode: config.mock.enabled ? 'MOCK' : 'LIVE',
-        tokens: {
-            tokenA: config.tokens.tokenA.symbol,
-            tokenB: config.tokens.tokenB.symbol
-        }
-    });
-});
-
-// ✅ DODAJ OVO - Health check za Render
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'ok',
-        uptime: process.uptime(),
-        timestamp: Date.now()
-    });
-});
-
-app.get('/api/health', (req, res) => {  // ✅ I OVO (Render traži /api/health)
-    res.status(200).json({
-        status: 'ok',
-        uptime: process.uptime(),
-        timestamp: Date.now()
-    });
-});
-
-app.get('/status', (req, res) => {
-    // ... postojeći kod
-});
+// ═══════════════════════════════════════════════════════════════
+// 🚀 SERVER START
+// ═══════════════════════════════════════════════════════════════
 
 server.listen(PORT, () => {
     console.log(`\n🚀 Custom Token Battle Arena Server`);
@@ -301,9 +303,10 @@ server.listen(PORT, () => {
     console.log(`   ${config.tokens.tokenB.symbol} (${config.tokens.tokenB.name})`);
     console.log(`\n🎮 Best of ${config.game.roundsToWin * 2 - 1} rounds`);
     console.log(`📊 Status: http://localhost:${PORT}/status`);
+    console.log(`💚 Health: http://localhost:${PORT}/health`);
 
     if (config.mock.enabled) {
-        console.log(`\n🎮 MOCK CONTROLS:`);
+        console.log(`\n🎮 MOCK CONTROLS (HTTP):`);
         console.log(`   POST /mock/pump/tokenA - Force pump Token A`);
         console.log(`   POST /mock/dump/tokenB - Force dump Token B`);
         console.log(`   POST /mock/trend/tokenA {"trend":"pumping"}`);

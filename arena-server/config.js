@@ -1,4 +1,4 @@
-// config.js - MOCK TEST CONFIG
+// config.js - MOCK TEST CONFIG - FIXED VERSION
 module.exports = {
     tokens: {
         tokenA: {
@@ -7,7 +7,7 @@ module.exports = {
             address: "0xMOCK_TOKEN_A",
             chain: "bsc",
             isMock: true,
-            icon: "/images/solana_logo.png"  // ✅ DODAJ OVO
+            icon: "/images/solana_logo.png"  // ❌ 404 Error - fajl ne postoji!
         },
         tokenB: {
             name: "Pump Fun Supreme",
@@ -15,7 +15,7 @@ module.exports = {
             address: "0xMOCK_TOKEN_B",
             chain: "solana",
             isMock: true,
-            icon: "/images/bnb_logo.png"     // ✅ DODAJ OVO
+            icon: "/images/bnb_logo.png"  // ❌ 404 Error - fajl ne postoji!
         }
     },
 

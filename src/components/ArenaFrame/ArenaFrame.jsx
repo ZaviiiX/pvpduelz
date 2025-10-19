@@ -5,7 +5,7 @@ import { MockControls } from './MockControls';
 import { GameOverlay } from './GameOverlay';
 import { StatusIndicator } from './StatusIndicator';
 import { VideoPlayer } from './VideoPlayer';
-import { HealthBar } from './HealthBar';
+import  HealthBar  from './HealthBar';
 import { TokenShield } from './TokenShield';
 import { ComboDisplay } from './ComboDisplay';
 import { PriceTicker } from './PriceTicker';
@@ -50,19 +50,41 @@ export default function ArenaFrame(props) {
 
   // MAIN ARENA
   return (
-      <section className={cls(
-          "relative w-full h-screen grid place-items-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-hidden",
-          shouldShake && 'animate-screen-shake'
-      )}>
+      <section
+          className={cls(
+              // switched to stone background + subtle shake
+              "relative w-full h-screen grid place-items-center stone-bg overflow-hidden",
+              shouldShake && "animate-battle-shake"
+          )}
+      >
+        {/* global flash (unchanged) */}
         <ScreenFlash isActive={ws.flashEffect.active} color={ws.flashEffect.color} />
 
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM2MzY2ZjEiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yem0wIDRoLTJ2Mmgydi0yeiIvPjwvZz48L2c+PC9zdmc+')] opacity-10" />
+        {/* Colosseum arches backdrop */}
+        <div className="colosseum-arches" />
 
+        {/* Top Latin banner */}
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[60] px-6 py-2 parchment glass-card border-2 border-[#8b6914]">
+          <span className="font-ancient gold-text tracking-[0.2em] text-xl">ARENA GLORIAE</span>
+        </div>
+
+        {/* Side torches */}
+        <div className="torch torch-left" />
+        <div className="torch torch-right" />
+
+        {/* Stone pillars framing the screen */}
+        <div className="pillar pillar-left" />
+        <div className="pillar pillar-right" />
+
+        {/* Subtle scanlines grain */}
+        <div className="scanlines" />
+
+        {/* Damage popups */}
         <DamagePopup damage={ws.damagePopup.tokenA} position="left" />
         <DamagePopup damage={ws.damagePopup.tokenB} position="right" />
 
+        {/* Stats & tickers */}
         <StatsPanel score={ws.score} round={ws.round} />
-
         <div className="absolute top-4 left-6 z-25">
           <PriceTicker
               token={ws.tokenConfig.tokenA.symbol}
@@ -78,9 +100,11 @@ export default function ArenaFrame(props) {
           />
         </div>
 
+        {/* Combos */}
         <ComboDisplay combo={ws.combo.tokenA} side="left" />
         <ComboDisplay combo={ws.combo.tokenB} side="right" />
 
+        {/* Status banner (center top) */}
         <StatusIndicator
             syncMode={syncMode}
             devMode={devMode}
@@ -88,7 +112,8 @@ export default function ArenaFrame(props) {
             userCount={ws.userCount}
         />
 
-        <div className="absolute top-20 left-6 z-30">
+        {/* Health bars */}
+        <div className="absolute top-24 left-6 z-30">
           <HealthBar
               health={ws.health.tokenA}
               side="left"
@@ -96,7 +121,7 @@ export default function ArenaFrame(props) {
               lastDamage={ws.lastDamage.tokenA}
           />
         </div>
-        <div className="absolute top-20 right-6 z-30">
+        <div className="absolute top-24 right-6 z-30">
           <HealthBar
               health={ws.health.tokenB}
               side="right"
@@ -105,12 +130,13 @@ export default function ArenaFrame(props) {
           />
         </div>
 
+        {/* Heraldic token shields */}
         <div className="absolute left-6 top-1/2 -translate-y-1/2 hidden sm:block z-20">
           <TokenShield
               label={ws.tokenConfig.tokenA.symbol}
               tone="#6366f1"
               icon={ws.tokenConfig.tokenA.icon}
-              {...getTokenStatus(ws.currentScenario, 'tokenA')}
+              {...getTokenStatus(ws.currentScenario, "tokenA")}
               marketChange={ws.marketData.tokenA.change24h}
           />
         </div>
@@ -119,11 +145,18 @@ export default function ArenaFrame(props) {
               label={ws.tokenConfig.tokenB.symbol}
               tone="#a855f7"
               icon={ws.tokenConfig.tokenB.icon}
-              {...getTokenStatus(ws.currentScenario, 'tokenB')}
+              {...getTokenStatus(ws.currentScenario, "tokenB")}
               marketChange={ws.marketData.tokenB.change24h}
           />
         </div>
 
+        {/* Laurel corners around the player */}
+        <div className="laurel laurel-tl" />
+        <div className="laurel laurel-tr" />
+        <div className="laurel laurel-bl" />
+        <div className="laurel laurel-br" />
+
+        {/* Main video frame */}
         <VideoPlayer
             video1Ref={videoPlayer.video1Ref}
             video2Ref={videoPlayer.video2Ref}
@@ -131,6 +164,7 @@ export default function ArenaFrame(props) {
             fullHeight={fullHeight}
         />
 
+        {/* Dev controls & Game over overlays (unchanged) */}
         {devMode && syncMode && (
             <MockControls
                 socketRef={ws.socketRef}
@@ -138,13 +172,8 @@ export default function ArenaFrame(props) {
                 setCurrentScenario={videoPlayer.setCurrentScenario}
             />
         )}
-
         {ws.gameOver && (
-            <GameOverlay
-                winner={ws.gameOver}
-                tokenConfig={ws.tokenConfig}
-                score={ws.score}
-            />
+            <GameOverlay winner={ws.gameOver} tokenConfig={ws.tokenConfig} score={ws.score} />
         )}
       </section>
   );

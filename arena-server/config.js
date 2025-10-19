@@ -6,7 +6,7 @@ module.exports = {
             symbol: "SOLKILL",
             address: "0xMOCK_TOKEN_A",
             chain: "bsc",
-            isMock: false,
+            isMock: true,
             icon: "/images/solana_logo.png"  // ✅ DODAJ OVO
         },
         tokenB: {
@@ -14,7 +14,7 @@ module.exports = {
             symbol: "PUMPSUP",
             address: "0xMOCK_TOKEN_B",
             chain: "solana",
-            isMock: false,
+            isMock: true,
             icon: "/images/bnb_logo.png"     // ✅ DODAJ OVO
         }
     },

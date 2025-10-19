@@ -1,4 +1,4 @@
-// ArenaFrame.jsx - SA PORTAL TRANSITION INTRO + HOVER ENDFRAME (FINAL FIXED)
+// ArenaFrame.jsx - SA PORTAL TRANSITION INTRO + HOVER ENDFRAME + DEV MODE (FINAL)
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import io from "socket.io-client";
 import "./ArenaFrame.css";
@@ -198,6 +198,7 @@ export default function ArenaFrame({
                                      aspect = "16/9",
                                      fullHeight = true,
                                      testingMode = false,
+                                     devMode = true,
                                      syncMode = true,
                                      serverUrl = "http://localhost:3001",
                                      tokenIcons = {
@@ -687,7 +688,6 @@ export default function ArenaFrame({
     return () => socket.disconnect();
   }, [syncMode, serverUrl, hasJoined]);
 
-  // 🎬 VIDEO SWITCHING (arena videos) - SA GUARDOM
   // 🎬 VIDEO SWITCHING (arena videos) - SA GUARDOM I REF-OM
   useEffect(() => {
     if (!hasJoined) return;
@@ -736,7 +736,7 @@ export default function ArenaFrame({
 
     nextVideo.addEventListener('canplaythrough', handleCanPlay, { once: true });
     return () => nextVideo.removeEventListener('canplaythrough', handleCanPlay);
-  }, [currentScenario, hasJoined, videos, activeVideoIndex]); // ✅ activeVideoIndex ostaje u dependencies
+  }, [currentScenario, hasJoined, videos, activeVideoIndex]);
 
   const handleVideoEnded = useCallback(() => {
     const attackScenarios = ['tokenAPump', 'tokenBPump', 'tokenACombo', 'tokenBCombo'];
@@ -813,7 +813,7 @@ export default function ArenaFrame({
                   height: '100%',
                   objectFit: 'cover',
                   opacity: portalPhase === 'intro' ? 1 : 0,
-
+                  transition: 'opacity 0.5s ease',
                   zIndex: 2
                 }}
             >
@@ -832,7 +832,7 @@ export default function ArenaFrame({
                       height: '100%',
                       objectFit: 'cover',
                       opacity: portalPhase === 'endframe' ? 1 : 0,
-
+                      transition: 'opacity 0.3s ease',
                       pointerEvents: 'none',
                       zIndex: 1
                     }}
@@ -851,7 +851,7 @@ export default function ArenaFrame({
                       height: '100%',
                       objectFit: 'cover',
                       opacity: isHovering ? 1 : 0,
-
+                      transition: 'opacity 0.2s ease',
                       pointerEvents: 'none',
                       zIndex: 3
                     }}
@@ -872,7 +872,7 @@ export default function ArenaFrame({
                   height: '100%',
                   objectFit: 'cover',
                   opacity: portalPhase === 'transition' ? 1 : 0,
-
+                  transition: 'opacity 0.6s ease',
                   pointerEvents: 'none',
                   zIndex: 4
                 }}
@@ -882,7 +882,7 @@ export default function ArenaFrame({
 
             {/* CTA BUTTON */}
             {showCTA && portalPhase === 'endframe' && (
-              <a
+            <a
                 ref={ctaRef}
               href="#"
               onClick={handleCTAClick}
@@ -946,6 +946,7 @@ export default function ArenaFrame({
         <ComboDisplay combo={combo.tokenA} side="left" />
         <ComboDisplay combo={combo.tokenB} side="right" />
 
+        {/* STATUS INDICATOR SA DEV MODE INDIKATOROM */}
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
           <div className="status-indicator">
             <div className="flex items-center gap-4">
@@ -961,6 +962,15 @@ export default function ArenaFrame({
                     <div className="w-px h-6 bg-gray-600" />
                   </>
               )}
+
+              {/* ✅ DEV MODE INDIKATOR */}
+              {devMode && (
+                  <>
+                    <span className="text-xs text-yellow-400 font-bold">🛠️ DEV MODE</span>
+                    <div className="w-px h-6 bg-gray-600" />
+                  </>
+              )}
+
               <span className="text-sm font-bold text-indigo-400 font-display">CRYPTO ARENA</span>
             </div>
           </div>
@@ -1075,7 +1085,8 @@ export default function ArenaFrame({
           </div>
         </div>
 
-        {syncMode && tokenConfig.tokenA?.isMock && (
+        {/* ✅ MOCK KONTROLE - SAMO U DEV MODE */}
+        {devMode && syncMode && (
             <div className="absolute bottom-6 left-6 z-40">
               <div className="mock-controls">
                 <div className="text-sm font-bold text-purple-400 mb-3 font-display flex items-center gap-2">

@@ -3,7 +3,7 @@ export const DEFAULT_CONFIG = {
     fullHeight: true,
     devMode: false,
     syncMode: true,
-    serverUrl: "http://localhost:3001",
+    serverUrl: "https://arena-server-gh2h.onrender.com",
 
     tokenIcons: {
         tokenA: null,

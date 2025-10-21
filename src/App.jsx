@@ -1,11 +1,11 @@
 import React from 'react';
 import ArenaFrame from './components/ArenaFrame';
-import './App.css';
+import './components/App.css';
 
 function App() {
     return (
         <ArenaFrame
-            devMode={true}
+            devMode={false}
             syncMode={true}
             serverUrl="http://localhost:3001"
         />

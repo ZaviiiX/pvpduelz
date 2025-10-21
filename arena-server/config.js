@@ -1,37 +1,39 @@
-// config.js - MOCK TEST CONFIG - FIXED VERSION
+// config.js - BALANCED FOR VIDEO SEQUENCES
 module.exports = {
     tokens: {
         tokenA: {
-            name: "Solana Killer",
-            symbol: "SOLKILL",
-            address: "0xMOCK_TOKEN_A",
-            chain: "bsc",
-            isMock: true,
-            icon: "/images/solana_logo.png"  // ❌ 404 Error - fajl ne postoji!
+            name: "Solana",
+            symbol: "SOL",
+            address: "So11111111111111111111111111111111111111112",
+            chain: "solana",
+            isMock: false,
+            icon: "/images/solana_logo.png"
         },
         tokenB: {
-            name: "Pump Fun Supreme",
-            symbol: "PUMPSUP",
-            address: "0xMOCK_TOKEN_B",
-            chain: "solana",
-            isMock: true,
-            icon: "/images/bnb_logo.png"  // ❌ 404 Error - fajl ne postoji!
+            name: "BNB",
+            symbol: "BNB",
+            address: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+            chain: "bsc",
+            isMock: false,
+            icon: "/images/bnb_logo.png"
         }
     },
 
     game: {
         maxHealth: 100,
         roundsToWin: 3,
-        damageMultiplier: 12,
-        minMcDiffForAttack: 0.08,
-        battleInterval: 4000,
-        marketDataInterval: 3000
+        damageMultiplier: 8,
+        minMcDiffForAttack: 0.10,      // 🎯 0.10% = samo veće promene
+        battleInterval: 8000,        // 8s
+        marketDataInterval: 5000,    // 5s
+        attackCooldown: 13000,
     },
 
+
     mock: {
-        enabled: true,
-        manualMode: true,
-        volatility: 0.5,
+        enabled: false,
+        manualMode: false,
+        volatility: 1.5,
         autoTrends: false
     }
 };

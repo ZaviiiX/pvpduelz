@@ -1,4 +1,4 @@
-// useWebSocket.js - FIXED VERSION with Memory Leak Prevention
+// useWebSocket.js - COMPLETE WITH ROUND VICTORY
 import { useState, useRef, useEffect } from 'react';
 import io from 'socket.io-client';
 import {
@@ -24,19 +24,29 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
     const [flashEffect, setFlashEffect] = useState({ active: false, color: 'red' });
     const [gameOver, setGameOver] = useState(null);
 
-    const socketRef = useRef(null);
+    // 🆕 ATTACK REASON STATE
+    const [attackReason, setAttackReason] = useState({
+        attacker: null,
+        attackerChange: null,
+        defenderChange: null,
+        mcDifference: null
+    });
 
-    // ✅ NEW: Track timeouts for cleanup
+    // 🆕 ROUND VICTORY STATE
+    const [roundVictory, setRoundVictory] = useState({
+        winner: null,
+        currentRound: null
+    });
+
+    const socketRef = useRef(null);
     const timeoutsRef = useRef([]);
 
-    // ✅ NEW: Helper to manage timeouts
     const setSafeTimeout = (callback, delay) => {
         const id = setTimeout(callback, delay);
         timeoutsRef.current.push(id);
         return id;
     };
 
-    // ✅ IMPROVED: Direct scenario update (no local state duplication)
     const updateScenario = (scenario, source = 'websocket') => {
         if (setCurrentScenario) {
             setCurrentScenario(scenario, source);
@@ -57,10 +67,6 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
 
         socketRef.current = socket;
 
-        // ═══════════════════════════════════════════════════════════════
-        // 🔌 CONNECTION EVENTS
-        // ═══════════════════════════════════════════════════════════════
-
         socket.on('connect', () => {
             console.log('✅ Connected to Battle Server');
             setIsConnected(true);
@@ -70,10 +76,6 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
             console.log('❌ Disconnected from Battle Server');
             setIsConnected(false);
         });
-
-        // ═══════════════════════════════════════════════════════════════
-        // 📦 INITIAL STATE
-        // ═══════════════════════════════════════════════════════════════
 
         socket.on('initial_state', (state) => {
             console.log('📦 Initial state received');
@@ -93,15 +95,19 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
             setMarketData(state.marketData);
             updateScenario(state.scenario, 'websocket');
             setLastDamage(state.lastDamage);
+
+            if (state.isGameOver) {
+                setGameOver(state.winner);
+            }
         });
 
-        // ═══════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════
         // ⚔️ BATTLE UPDATE
-        // ═══════════════════════════════════════════════════════════════
-
+        // ═══════════════════════════════════════════════════════════
         socket.on('battle_update', (update) => {
             console.log('⚔️ Battle update received:', update.scenario);
 
+            // Update states
             setHealth(update.health);
             setMarketData(update.marketData);
             setCombo(update.combo);
@@ -109,7 +115,22 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
             setLastDamage(update.lastDamage);
             setRound(update.currentRound);
 
-            // ✅ FIXED: Damage popup with safe timeout
+            // Set attack reason
+            if (update.attackerChange !== undefined && update.defenderChange !== undefined) {
+                setAttackReason({
+                    attacker: update.attacker,
+                    attackerChange: update.attackerChange,
+                    defenderChange: update.defenderChange,
+                    mcDifference: update.mcDifference
+                });
+            }
+
+            // Update scenario
+            if (update.scenario) {
+                updateScenario(update.scenario, 'websocket');
+            }
+
+            // Damage popup
             if (update.defender === 'tokenA') {
                 setDamagePopup(prev => ({ ...prev, tokenA: update.damage }));
                 setSafeTimeout(() => {
@@ -122,61 +143,121 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
                 }, 1500);
             }
 
-            // Scenario update
-            if (update.scenario) {
-                updateScenario(update.scenario, 'websocket');
-                if (update.scenario.includes('Victory')) {
-                    setGameOver(update.attacker);
-                }
-            }
-
-            // ✅ FIXED: Flash effect with safe timeout
+            // Flash effect
             setFlashEffect({ active: true, color: 'red' });
             setSafeTimeout(() => {
                 setFlashEffect({ active: false, color: 'red' });
             }, 300);
         });
 
-        // ═══════════════════════════════════════════════════════════════
-        // 🔄 GAME RESET
-        // ═══════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════
+        // 🏆 ROUND END EVENT
+        // ═══════════════════════════════════════════════════════════
+        socket.on('round_end', (data) => {
+            console.log('🏆 Round end received:', data);
 
+            // Update score
+            setScore(data.score);
+
+            // 🆕 Show round victory screen
+            setRoundVictory({
+                winner: data.winner,
+                currentRound: data.currentRound
+            });
+
+            console.log(`✅ Round ${data.currentRound} complete - ${data.winner} wins!`);
+        });
+
+        // ═══════════════════════════════════════════════════════════
+        // 👑 GAME OVER EVENT
+        // ═══════════════════════════════════════════════════════════
+        socket.on('game_over', (data) => {
+            console.log('👑 GAME OVER received:', data);
+
+            setGameOver(data.winner);
+            setScore(data.score);
+
+            // Clear round victory when game over shows
+            setRoundVictory({
+                winner: null,
+                currentRound: null
+            });
+
+            console.log(`✅ ${data.winner} wins the ENTIRE GAME!`);
+        });
+
+        // ═══════════════════════════════════════════════════════════
+        // 🔔 ROUND START
+        // ═══════════════════════════════════════════════════════════
+        socket.on('round_start', (data) => {
+            console.log('🔔 Round start received:', data);
+
+            setHealth(data.health);
+            setRound(data.currentRound);
+            setScore(data.score);
+            setCombo({ tokenA: 0, tokenB: 0 });
+            setGameOver(null);
+
+            // Clear round victory screen
+            setRoundVictory({
+                winner: null,
+                currentRound: null
+            });
+
+            // Reset attack reason
+            setAttackReason({
+                attacker: null,
+                attackerChange: null,
+                defenderChange: null,
+                mcDifference: null
+            });
+
+            updateScenario('idle', 'websocket');
+
+            console.log(`✅ New round started: Round ${data.currentRound}`);
+        });
+
+        // ═══════════════════════════════════════════════════════════
+        // 🔄 GAME RESET
+        // ═══════════════════════════════════════════════════════════
         socket.on('game_reset', (data) => {
             console.log('🔄 Game reset received');
+
             setHealth(data.health);
             setRound(data.currentRound);
             setScore(data.score);
             setGameOver(null);
             setCombo(INITIAL_COMBO);
+
+            // Clear round victory screen
+            setRoundVictory({
+                winner: null,
+                currentRound: null
+            });
+
+            // Reset attack reason
+            setAttackReason({
+                attacker: null,
+                attackerChange: null,
+                defenderChange: null,
+                mcDifference: null
+            });
+
             updateScenario('idle', 'websocket');
         });
-
-        // ═══════════════════════════════════════════════════════════════
-        // 🎬 SCENARIO CHANGE
-        // ═══════════════════════════════════════════════════════════════
 
         socket.on('scenario_change', ({ scenario }) => {
             console.log('🎬 Scenario change received:', scenario);
             updateScenario(scenario, 'websocket');
         });
 
-        // ═══════════════════════════════════════════════════════════════
-        // 👥 USER COUNT
-        // ═══════════════════════════════════════════════════════════════
-
         socket.on('user_count', (count) => {
             setUserCount(count);
         });
 
-        // ═══════════════════════════════════════════════════════════════
-        // 🧹 CLEANUP
-        // ═══════════════════════════════════════════════════════════════
-
         return () => {
             console.log('🧹 Cleaning up WebSocket connection');
             socket.disconnect();
-
-            // ✅ FIXED: Clear all timeouts to prevent memory leaks
             timeoutsRef.current.forEach(clearTimeout);
             timeoutsRef.current = [];
         };
@@ -196,5 +277,7 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
         damagePopup,
         flashEffect,
         gameOver,
+        attackReason,
+        roundVictory, // 🆕 EXPORT THIS
     };
 }

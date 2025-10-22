@@ -1,4 +1,4 @@
-// config.js - BALANCED FOR VIDEO SEQUENCES
+// config.js - OPTIMIZED FOR PRODUCTION WITH RATE LIMITING
 module.exports = {
     tokens: {
         tokenA: {
@@ -23,15 +23,20 @@ module.exports = {
         maxHealth: 100,
         roundsToWin: 3,
         damageMultiplier: 8,
-        minMcDiffForAttack: 0.10,      // 🎯 0.10% = samo veće promene
-        battleInterval: 8000,        // 8s
-        marketDataInterval: 5000,    // 5s
-        attackCooldown: 13000,
+        minMcDiffForAttack: 0.10,      // 0.10% = samo veće promene
+        battleInterval: 8000,           // 8s - battle check frequency
+
+        // 🆕 OPTIMIZED FOR PRODUCTION
+        // Free tier APIs imaju rate limits, pa je bolje da zovemo ređe
+        marketDataInterval: 10000,      // 🔄 10s umjesto 5s (6 poziva/min umjesto 12)
+        // Alternativno možeš koristiti:
+        // marketDataInterval: 15000,   // 15s = 4 poziva/min (ultra safe za free tier)
+
+        attackCooldown: 13000,          // 13s - vrijeme između napada
     },
 
-
     mock: {
-        enabled: false,
+        enabled: false,     // ✅ Production = false
         manualMode: false,
         volatility: 1.5,
         autoTrends: false

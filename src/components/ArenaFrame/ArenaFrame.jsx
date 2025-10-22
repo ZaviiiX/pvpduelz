@@ -1,10 +1,10 @@
-// ArenaFrame.jsx - COMPLETE RESPONSIVE VERSION
+// ArenaFrame.jsx - COMPLETE WITH ROUND VICTORY
 import React, { useEffect } from 'react';
 import { usePortal, useWebSocket, useVideoPlayer } from './hooks';
 import { PortalScreen } from './PortalScreen';
 import { MockControls } from './MockControls';
 import { GameOverlay } from './GameOverlay';
-import RoundVictory from './RoundVictory';
+import RoundVictory from './RoundVictory'; // 🆕 IMPORT
 import { StatusIndicator } from './StatusIndicator';
 import { VideoPlayer } from './VideoPlayer';
 import  HealthBar  from './HealthBar';
@@ -51,6 +51,7 @@ export default function ArenaFrame(props) {
             <ScreenFlash isActive={ws.flashEffect.active} color={ws.flashEffect.color} />
             <div className="colosseum-arches" />
 
+
             <div className="torch torch-left" />
             <div className="torch torch-right" />
             <div className="pillar pillar-left" />
@@ -78,87 +79,72 @@ export default function ArenaFrame(props) {
                 tokenConfig={ws.tokenConfig}
             />
 
-            {/* 📱 RESPONSIVE HUD LAYOUT */}
-            <div className="absolute inset-0 pointer-events-none">
-                <div className="h-full w-full max-w-[1800px] mx-auto relative px-2 sm:px-4">
-
-                    {/* TOP BAR - Price Tickers */}
-                    <div className="absolute top-2 sm:top-4 md:top-6 left-2 sm:left-4 md:left-6 right-2 sm:right-4 md:right-6 z-[40] pointer-events-auto">
-                        <div className="flex justify-between items-start gap-2 sm:gap-3 md:gap-4">
-                            <PriceTicker
-                                token={ws.tokenConfig.tokenA.symbol}
-                                price={ws.marketData.tokenA.price}
-                                change={ws.marketData.tokenA.change24h}
-                                marketCap={ws.marketData.tokenA.marketCap}
-                                volume24h={ws.marketData.tokenA.volume24h}
-                            />
-                            <PriceTicker
-                                token={ws.tokenConfig.tokenB.symbol}
-                                price={ws.marketData.tokenB.price}
-                                change={ws.marketData.tokenB.change24h}
-                                marketCap={ws.marketData.tokenB.marketCap}
-                                volume24h={ws.marketData.tokenB.volume24h}
-                            />
-                        </div>
-                    </div>
-
-                    {/* HEALTH BARS - Horizontal Below Price */}
-                    <div className="absolute top-[110px] sm:top-[130px] md:top-[150px] left-2 sm:left-4 md:left-6 right-2 sm:right-4 md:right-6 z-[35] pointer-events-auto">
-                        <div className="flex flex-col sm:flex-row justify-between items-stretch gap-2 sm:gap-3 md:gap-4">
-                            <div className="flex-1 min-w-0">
-                                <HealthBar
-                                    health={ws.health.tokenA}
-                                    side="left"
-                                    label={ws.tokenConfig.tokenA.symbol}
-                                    lastDamage={ws.lastDamage.tokenA}
-                                />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <HealthBar
-                                    health={ws.health.tokenB}
-                                    side="right"
-                                    label={ws.tokenConfig.tokenB.symbol}
-                                    lastDamage={ws.lastDamage.tokenB}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* SIDE SHIELDS - Desktop Only */}
-                    <div className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 hidden lg:block z-20 pointer-events-none">
-                        <TokenShield
-                            label={ws.tokenConfig.tokenA.symbol}
-                            tone="#6366f1"
-                            icon={ws.tokenConfig.tokenA.icon}
-                            {...getTokenStatus(ws.currentScenario, "tokenA")}
-                            marketChange={ws.marketData.tokenA.change24h}
-                        />
-                    </div>
-
-                    <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 hidden lg:block z-20 pointer-events-none">
-                        <TokenShield
-                            label={ws.tokenConfig.tokenB.symbol}
-                            tone="#a855f7"
-                            icon={ws.tokenConfig.tokenB.icon}
-                            {...getTokenStatus(ws.currentScenario, "tokenB")}
-                            marketChange={ws.marketData.tokenB.change24h}
-                        />
-                    </div>
-
-                    {/* COMBO DISPLAYS */}
-                    <ComboDisplay combo={ws.combo.tokenA} side="left" />
-                    <ComboDisplay combo={ws.combo.tokenB} side="right" />
-
-                    {/* BOTTOM BAR - Stats */}
-                    <div className="absolute bottom-2 sm:bottom-4 md:bottom-6 left-2 sm:left-4 md:left-6 right-2 sm:right-4 md:right-6 z-20 pointer-events-auto">
-                        <div className="flex justify-center sm:justify-end">
-                            <StatsPanel score={ws.score} round={ws.round} />
-                        </div>
-                    </div>
-                </div>
+            {/* LEFT SIDE HUD - TOKEN A */}
+            <div className="absolute top-20 left-6 z-[40]">
+                <PriceTicker
+                    token={ws.tokenConfig.tokenA.symbol}
+                    price={ws.marketData.tokenA.price}
+                    change={ws.marketData.tokenA.change24h}
+                    marketCap={ws.marketData.tokenA.marketCap}
+                    volume24h={ws.marketData.tokenA.volume24h}
+                />
             </div>
 
-            {/* TOP CENTER - Status */}
+            <div className="absolute top-[310px] left-6 z-[35]">
+                <HealthBar
+                    health={ws.health.tokenA}
+                    side="left"
+                    label={ws.tokenConfig.tokenA.symbol}
+                    lastDamage={ws.lastDamage.tokenA}
+                />
+            </div>
+
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 hidden sm:block z-20">
+                <TokenShield
+                    label={ws.tokenConfig.tokenA.symbol}
+                    tone="#6366f1"
+                    icon={ws.tokenConfig.tokenA.icon}
+                    {...getTokenStatus(ws.currentScenario, "tokenA")}
+                    marketChange={ws.marketData.tokenA.change24h}
+                />
+            </div>
+
+            <ComboDisplay combo={ws.combo.tokenA} side="left" />
+
+            {/* RIGHT SIDE HUD - TOKEN B */}
+            <div className="absolute top-20 right-6 z-[40]">
+                <PriceTicker
+                    token={ws.tokenConfig.tokenB.symbol}
+                    price={ws.marketData.tokenB.price}
+                    change={ws.marketData.tokenB.change24h}
+                    marketCap={ws.marketData.tokenB.marketCap}
+                    volume24h={ws.marketData.tokenB.volume24h}
+                />
+            </div>
+
+            <div className="absolute top-[310px] right-6 z-[35]">
+                <HealthBar
+                    health={ws.health.tokenB}
+                    side="right"
+                    label={ws.tokenConfig.tokenB.symbol}
+                    lastDamage={ws.lastDamage.tokenB}
+                />
+            </div>
+
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden sm:block z-20">
+                <TokenShield
+                    label={ws.tokenConfig.tokenB.symbol}
+                    tone="#a855f7"
+                    icon={ws.tokenConfig.tokenB.icon}
+                    {...getTokenStatus(ws.currentScenario, "tokenB")}
+                    marketChange={ws.marketData.tokenB.change24h}
+                />
+            </div>
+
+            <ComboDisplay combo={ws.combo.tokenB} side="right" />
+
+            {/* CENTER HUD */}
+            <StatsPanel score={ws.score} round={ws.round} />
             <StatusIndicator
                 syncMode={syncMode}
                 devMode={devMode}
@@ -166,11 +152,11 @@ export default function ArenaFrame(props) {
                 userCount={ws.userCount}
             />
 
-            {/* DECORATIVE ELEMENTS - Desktop Only */}
-            <div className="laurel laurel-tl hidden xl:block" />
-            <div className="laurel laurel-tr hidden xl:block" />
-            <div className="laurel laurel-bl hidden xl:block" />
-            <div className="laurel laurel-br hidden xl:block" />
+            {/* DECORATIVE ELEMENTS */}
+            <div className="laurel laurel-tl" />
+            <div className="laurel laurel-tr" />
+            <div className="laurel laurel-bl" />
+            <div className="laurel laurel-br" />
 
             {/* MAIN VIDEO PLAYER */}
             <VideoPlayer
@@ -189,7 +175,7 @@ export default function ArenaFrame(props) {
                 />
             )}
 
-            {/* Game Over Overlay */}
+            {/* Game Over Overlay (ONLY for final game over) */}
             {ws.gameOver && (
                 <GameOverlay winner={ws.gameOver} tokenConfig={ws.tokenConfig} score={ws.score} />
             )}

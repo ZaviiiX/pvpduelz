@@ -14,7 +14,7 @@ function toRoman(num) {
     return out;
 }
 
-export function StatsPanel({ score, round }) {
+export function StatsPanel({ score, round, tokenConfig }) {
     return (
         <div className="absolute bottom-6 right-6 z-20">
             <div className="stats-panel">
@@ -25,11 +25,11 @@ export function StatsPanel({ score, round }) {
                         <span className="text-white font-bold">{toRoman(round)}</span>
                     </div>
                     <div className="flex justify-between text-gray-300">
-                        <span>Token A:</span>
+                        <span>{tokenConfig?.tokenA?.name || 'Token A'}:</span>
                         <span className="text-green-400 font-bold">{score.tokenA}</span>
                     </div>
                     <div className="flex justify-between text-gray-300">
-                        <span>Token B:</span>
+                        <span>{tokenConfig?.tokenB?.name || 'Token B'}:</span>
                         <span className="text-yellow-400 font-bold">{score.tokenB}</span>
                     </div>
                 </div>

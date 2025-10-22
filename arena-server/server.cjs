@@ -359,6 +359,59 @@ if (config.mock.enabled) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎯 SET TOKENS API
+// ═══════════════════════════════════════════════════════════════════════════
+app.post('/api/set-tokens', (req, res) => {
+  const { tokenA, tokenB } = req.body;
+  
+  try {
+    if (tokenA) {
+      config.tokens.tokenA = {
+        symbol: tokenA.symbol || config.tokens.tokenA.symbol,
+        name: tokenA.name || config.tokens.tokenA.name,
+        address: tokenA.address || config.tokens.tokenA.address
+      };
+    }
+    
+    if (tokenB) {
+      config.tokens.tokenB = {
+        symbol: tokenB.symbol || config.tokens.tokenB.symbol,
+        name: tokenB.name || config.tokens.tokenB.name,
+        address: tokenB.address || config.tokens.tokenB.address
+      };
+    }
+    
+    // Reset sve
+    if (config.mock.enabled && typeof marketData.reset === 'function') {
+      marketData.reset();
+    }
+    gameEngine.resetGame();
+    
+    // Notifikuj klijente
+    io.emit('tokens_updated', {
+      tokenA: config.tokens.tokenA,
+      tokenB: config.tokens.tokenB
+    });
+    
+    console.log('🎯 Tokens updated:', config.tokens.tokenA.symbol, 'vs', config.tokens.tokenB.symbol);
+    
+    res.json({
+      success: true,
+      message: 'Tokens updated successfully',
+      tokens: {
+        tokenA: config.tokens.tokenA,
+        tokenB: config.tokens.tokenB
+      }
+    });
+  } catch (error) {
+    console.error('❌ set-tokens error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 // Jednostavni debug (siguran)
 app.get('/debug', (req, res) => {
   try {

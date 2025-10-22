@@ -1,4 +1,4 @@
-// useVideoPlayer.js - FIXED: Proper sequence locking to prevent video freezing
+// useVideoPlayer.js - FIXED: Loop idle video to prevent freezing
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 export function useVideoPlayer(hasJoined, videos) {
@@ -56,13 +56,14 @@ export function useVideoPlayer(hasJoined, videos) {
         if (!video1) return;
 
         video1.src = videos.idle;
+        video1.loop = true; // 🔄 CRITICAL: Loop idle video
         video1.load();
 
         const handleCanPlay = () => {
             video1.play()
                 .then(() => {
                     video1.style.opacity = '1';
-                    console.log('✅ Arena initial video started');
+                    console.log('✅ Arena initial video started (looping)');
                 })
                 .catch(e => console.error('❌ Initial play error:', e));
         };
@@ -134,6 +135,9 @@ export function useVideoPlayer(hasJoined, videos) {
             return;
         }
 
+        // 🔄 SET LOOP ONLY FOR IDLE
+        nextVideo.loop = (currentScenario === 'idle');
+
         nextVideo.src = videoUrl;
         nextVideo.style.opacity = '0';
         nextVideo.style.zIndex = '1';
@@ -148,7 +152,7 @@ export function useVideoPlayer(hasJoined, videos) {
         nextVideo.addEventListener('error', handleError, { once: true });
 
         const handleCanPlay = () => {
-            console.log('✅ Video ready to play:', currentScenario);
+            console.log('✅ Video ready to play:', currentScenario, '| Loop:', nextVideo.loop);
 
             nextVideo.play().then(() => {
                 console.log('✅ Play started, fading videos');
@@ -240,13 +244,17 @@ export function useVideoPlayer(hasJoined, videos) {
                     setCurrentScenarioSafe(nextScenario, 'queued');
                 }, 500); // 500ms delay before next attack
             } else {
-                console.log('✅ Queue empty, staying at idle');
+                console.log('✅ Queue empty, idle will loop');
             }
             return;
         }
 
-        // ⚠️ UNKNOWN SCENARIO (idle, etc.)
-        console.log('⏸️ Non-sequence scenario ended:', scenario);
+        // ⚠️ IDLE or UNKNOWN - should loop, but log if ends
+        if (scenario === 'idle') {
+            console.log('⚠️ Idle video ended (should be looping!)');
+        } else {
+            console.log('⏸️ Non-sequence scenario ended:', scenario);
+        }
         isPlayingSequenceRef.current = false;
 
     }, [setCurrentScenarioSafe]);

@@ -1,4 +1,4 @@
-// server.cjs - COMPLETE FIXED VERSION
+// server.cjs - RENDER-SAFE COMPLETE VERSION
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -10,8 +10,8 @@ const gameEngine = require('./gameEngine');
 
 // ✅ MOCK ili REAL market data
 const marketData = config.mock.enabled
-    ? require('./mockMarketData')
-    : require('./marketData');
+  ? require('./mockMarketData')
+  : require('./marketData');
 
 const app = express();
 app.use(cors());
@@ -19,720 +19,399 @@ app.use(express.json());
 
 const server = http.createServer(app);
 const io = socketIo(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+  cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 const PORT = process.env.PORT || 3001;
 let connectedClients = 0;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔄 MARKET DATA FETCHING
+// 🔄 MARKET DATA FETCHING (sa zaštitom)
 // ═══════════════════════════════════════════════════════════════════════════
-
 async function fetchMarketDataLoop() {
+  try {
     const data = await marketData.fetchMarketData();
-    if (data) {
-        gameEngine.updateMarketData(data);
-    }
+    if (data) gameEngine.updateMarketData(data);
+  } catch (e) {
+    console.error('⚠️ fetchMarketDataLoop error:', e.message);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ⚔️ BATTLE PROCESSING - FIXED WITH EMIT CALLBACK
+// ⚔️ BATTLE PROCESSING
 // ═══════════════════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ⚔️ BATTLE PROCESSING - COMPLETE WITH ALL EVENT TYPES
-// ═══════════════════════════════════════════════════════════════════════════
-
 function processBattleLoop() {
-    // 📡 Create emit callback to send ALL game events
+  try {
     const emitCallback = (data) => {
-        if (data.type === 'round_start') {
-            console.log('📡 Emitting round_start event to all clients');
-            io.emit('round_start', {
-                currentRound: data.currentRound,
-                health: data.health,
-                score: data.score,
-                scenario: data.scenario
-            });
-        }
-        // 🆕 ROUND END EVENT
-        else if (data.type === 'round_end') {
-            console.log('📡 Emitting round_end event to all clients');
-            io.emit('round_end', {
-                winner: data.winner,
-                currentRound: data.currentRound,
-                score: data.score,
-                health: data.health
-            });
-        }
-        // 🆕 GAME OVER EVENT
-        else if (data.type === 'game_over') {
-            console.log('📡 Emitting game_over event to all clients');
-            io.emit('game_over', {
-                winner: data.winner,
-                score: data.score,
-                isGameOver: true
-            });
-        }
-        // 🆕 GAME RESET EVENT
-        else if (data.type === 'game_reset') {
-            console.log('📡 Emitting game_reset event to all clients');
-            io.emit('game_reset', {
-                currentRound: data.currentRound,
-                health: data.health,
-                score: data.score,
-                scenario: data.scenario
-            });
-        }
+      if (!data || !data.type) return;
+
+      if (data.type === 'round_start') {
+        io.emit('round_start', {
+          currentRound: data.currentRound,
+          health: data.health,
+          score: data.score,
+          scenario: data.scenario
+        });
+      } else if (data.type === 'round_end') {
+        io.emit('round_end', {
+          winner: data.winner,
+          currentRound: data.currentRound,
+          score: data.score,
+          health: data.health
+        });
+      } else if (data.type === 'game_over') {
+        io.emit('game_over', {
+          winner: data.winner,
+          score: data.score,
+          isGameOver: true
+        });
+      } else if (data.type === 'game_reset') {
+        io.emit('game_reset', {
+          currentRound: data.currentRound,
+          health: data.health,
+          score: data.score,
+          scenario: data.scenario
+        });
+      }
     };
 
-    // Pass callback to processBattle
     const battleResult = gameEngine.processBattle(emitCallback);
 
     if (battleResult && battleResult.type === 'battle') {
-        const state = gameEngine.getState();
-        const marketCache = marketData.getCache();
+      const state = gameEngine.getState();
+      const cache = safeCache();
 
-        io.emit('battle_update', {
-            ...battleResult,
-            lastDamage: state.lastDamage,
-            isGameOver: state.isGameOver,
-            winner: state.winner,
-            marketData: {
-                tokenA: {
-                    price: marketCache.tokenA.price,
-                    change24h: marketCache.tokenA.priceChange24h,
-                    marketCap: marketCache.tokenA.marketCap,
-                    volume24h: marketCache.tokenA.volume24h
-                },
-                tokenB: {
-                    price: marketCache.tokenB.price,
-                    change24h: marketCache.tokenB.priceChange24h,
-                    marketCap: marketCache.tokenB.marketCap,
-                    volume24h: marketCache.tokenB.volume24h
-                }
-            }
-        });
-    } else if (battleResult && battleResult.type === 'idle') {
-        io.emit('scenario_change', { scenario: 'idle' });
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🚀 START LOOPS
-// ═══════════════════════════════════════════════════════════════════════════
-
-setInterval(fetchMarketDataLoop, config.game.marketDataInterval);
-setInterval(processBattleLoop, config.game.battleInterval);
-
-// Initialize
-fetchMarketDataLoop();
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🌐 SOCKET.IO CONNECTION HANDLING
-// ═══════════════════════════════════════════════════════════════════════════
-
-io.on('connection', (socket) => {
-    connectedClients++;
-    console.log(`✅ Client connected: ${socket.id} | Total: ${connectedClients}`);
-
-    io.emit('user_count', connectedClients);
-
-    const state = gameEngine.getState();
-    const marketCache = marketData.getCache();
-
-    // Send initial state to client
-    socket.emit('initial_state', {
-        config: {
-            tokenA: config.tokens.tokenA,
-            tokenB: config.tokens.tokenB,
-            roundsToWin: config.game.roundsToWin,
-            isMock: config.mock.enabled
-        },
-        health: state.health,
-        scenario: state.currentScenario,
-        combo: state.combo,
-        currentRound: state.currentRound,
-        score: state.score,
+      io.emit('battle_update', {
+        ...battleResult,
+        lastDamage: state.lastDamage,
         isGameOver: state.isGameOver,
         winner: state.winner,
-        lastDamage: state.lastDamage,
         marketData: {
-            tokenA: marketCache.tokenA,
-            tokenB: marketCache.tokenB
+          tokenA: {
+            price: cache.tokenA.price,
+            change24h: cache.tokenA.priceChange24h,
+            marketCap: cache.tokenA.marketCap,
+            volume24h: cache.tokenA.volume24h
+          },
+          tokenB: {
+            price: cache.tokenB.price,
+            change24h: cache.tokenB.priceChange24h,
+            marketCap: cache.tokenB.marketCap,
+            volume24h: cache.tokenB.volume24h
+          }
         }
-    });
-
-    // Handle disconnect
-    socket.on('disconnect', () => {
-        connectedClients--;
-        console.log(`❌ Client disconnected: ${socket.id} | Total: ${connectedClients}`);
-        io.emit('user_count', connectedClients);
-    });
-
-    // Manual battle trigger
-    socket.on('manual_battle', () => {
-        if (config.mock.enabled && config.mock.manualMode) {
-            console.log('⚔️ Manual battle triggered by client');
-            processBattleLoop();
-        }
-    });
-
-    // Game reset
-    socket.on('reset_game', () => {
-        gameEngine.resetGame();
-        if (config.mock.enabled) {
-            marketData.reset();
-        }
-        io.emit('game_reset', {
-            health: gameEngine.getState().health,
-            currentRound: 1,
-            score: { tokenA: 0, tokenB: 0 }
-        });
-        console.log('🔄 Game manually reset');
-    });
-
-    // Test scenario
-    socket.on('test_scenario', (scenario) => {
-        gameEngine.state.currentScenario = scenario;
-        io.emit('scenario_change', { scenario });
-        console.log(`🎮 Test scenario: ${scenario}`);
-    });
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🎮 MOCK CONTROLS (Socket Events)
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    if (config.mock.enabled) {
-        socket.on('mock_pump', (data) => {
-            marketData.forcePump(data.token, data.intensity || 1);
-        });
-
-        socket.on('mock_dump', (data) => {
-            marketData.forceDump(data.token, data.intensity || 1);
-        });
-
-        socket.on('mock_set_trend', (data) => {
-            marketData.setTrend(data.token, data.trend);
-        });
-
-        socket.on('mock_set_volatility', (value) => {
-            marketData.setVolatility(value);
-        });
+      });
+    } else if (battleResult && battleResult.type === 'idle') {
+      io.emit('scenario_change', { scenario: 'idle' });
     }
-});
+  } catch (e) {
+    console.error('⚠️ processBattleLoop error:', e.message);
+  }
+}
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 📊 HTTP API ENDPOINTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Root endpoint
-app.get('/', (req, res) => {
-    res.json({
-        status: 'running',
-        mode: config.mock.enabled ? 'mock' : 'live',
-        game: {
-            tokenA: config.tokens.tokenA.symbol,
-            tokenB: config.tokens.tokenB.symbol,
-            roundsToWin: config.game.roundsToWin
-        },
-        server: {
-            connectedClients,
-            uptime: Math.floor(process.uptime())
-        }
-    });
-});
-
-// Current status
-app.get('/status', (req, res) => {
-    const state = gameEngine.getState();
-    const marketCache = marketData.getCache();
-
-    res.json({
-        game: {
-            currentRound: state.currentRound,
-            score: state.score,
-            health: state.health,
-            scenario: state.currentScenario,
-            isGameOver: state.isGameOver,
-            winner: state.winner,
-            combo: state.combo
-        },
-        tokens: {
-            tokenA: config.tokens.tokenA,
-            tokenB: config.tokens.tokenB
-        },
-        marketData: {
-            tokenA: {
-                ...marketCache.tokenA,
-                age: Date.now() - marketCache.tokenA.lastUpdate,
-                ageSeconds: Math.floor((Date.now() - marketCache.tokenA.lastUpdate) / 1000)
-            },
-            tokenB: {
-                ...marketCache.tokenB,
-                age: Date.now() - marketCache.tokenB.lastUpdate,
-                ageSeconds: Math.floor((Date.now() - marketCache.tokenB.lastUpdate) / 1000)
-            }
-        },
-        server: {
-            connectedClients,
-            mode: config.mock.enabled ? 'mock' : 'live',
-            uptime: Math.floor(process.uptime())
-        },
-        timestamp: new Date().toISOString()
-    });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🎮 MOCK CONTROL ENDPOINTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-if (config.mock.enabled) {
-    // Force pump tokenA
-    app.post('/mock/pump/tokenA', (req, res) => {
-        const intensity = req.body.intensity || 1;
-        marketData.forcePump('tokenA', intensity);
-        res.json({
-            success: true,
-            message: `Token A pumped (intensity: ${intensity})`,
-            cache: marketData.getCache().tokenA
-        });
-    });
-
-    // Force pump tokenB
-    app.post('/mock/pump/tokenB', (req, res) => {
-        const intensity = req.body.intensity || 1;
-        marketData.forcePump('tokenB', intensity);
-        res.json({
-            success: true,
-            message: `Token B pumped (intensity: ${intensity})`,
-            cache: marketData.getCache().tokenB
-        });
-    });
-
-    // Force dump tokenA
-    app.post('/mock/dump/tokenA', (req, res) => {
-        const intensity = req.body.intensity || 1;
-        marketData.forceDump('tokenA', intensity);
-        res.json({
-            success: true,
-            message: `Token A dumped (intensity: ${intensity})`,
-            cache: marketData.getCache().tokenA
-        });
-    });
-
-    // Force dump tokenB
-    app.post('/mock/dump/tokenB', (req, res) => {
-        const intensity = req.body.intensity || 1;
-        marketData.forceDump('tokenB', intensity);
-        res.json({
-            success: true,
-            message: `Token B dumped (intensity: ${intensity})`,
-            cache: marketData.getCache().tokenB
-        });
-    });
-
-    // Set trend for tokenA or tokenB
-    app.post('/mock/trend/:token', (req, res) => {
-        const token = req.params.token; // "tokenA" or "tokenB"
-        const { trend } = req.body; // "pumping", "dumping", "sideways"
-
-        if (!['tokenA', 'tokenB'].includes(token)) {
-            return res.status(400).json({ error: 'Invalid token (use tokenA or tokenB)' });
-        }
-
-        if (!['pumping', 'dumping', 'sideways'].includes(trend)) {
-            return res.status(400).json({ error: 'Invalid trend (use pumping/dumping/sideways)' });
-        }
-
-        marketData.setTrend(token, trend);
-
-        res.json({
-            success: true,
-            message: `${token} trend set to ${trend}`,
-            cache: marketData.getCache()[token]
-        });
-    });
-
-    // Set volatility
-    app.post('/mock/volatility', (req, res) => {
-        const { value } = req.body; // 0.1 to 2.0
-
-        if (!value || value < 0.1 || value > 2.0) {
-            return res.status(400).json({ error: 'Volatility must be between 0.1 and 2.0' });
-        }
-
-        marketData.setVolatility(value);
-
-        res.json({
-            success: true,
-            message: `Volatility set to ${value}`,
-            volatility: value
-        });
-    });
-
-    // Reset mock market data
-    app.post('/mock/reset', (req, res) => {
-        marketData.reset();
-        res.json({
-            success: true,
-            message: 'Mock market data reset',
-            cache: marketData.getCache()
-        });
-    });
-
-    // Get mock info
-    app.get('/mock/info', (req, res) => {
-        res.json({
-            enabled: config.mock.enabled,
-            manualMode: config.mock.manualMode,
-            cache: marketData.getCache(),
-            endpoints: [
-                'POST /mock/pump/tokenA',
-                'POST /mock/pump/tokenB',
-                'POST /mock/dump/tokenA',
-                'POST /mock/dump/tokenB',
-                'POST /mock/trend/:token {"trend":"pumping|dumping|sideways"}',
-                'POST /mock/volatility {"value":0.5-2.0}',
-                'POST /mock/reset'
-            ]
-        });
-    });
+// Helper: siguran market cache
+function safeCache() {
+  const c = marketData.getCache ? marketData.getCache() : {};
+  const safeTok = () => ({
+    price: 0, priceChange24h: 0, marketCap: 0, volume24h: 0, lastUpdate: Date.now()
+  });
+  return {
+    tokenA: { ...(c.tokenA || safeTok()) },
+    tokenB: { ...(c.tokenB || safeTok()) }
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔧 DEBUG ENDPOINTS
+// 🌐 SOCKET.IO
 // ═══════════════════════════════════════════════════════════════════════════
+io.on('connection', (socket) => {
+  connectedClients++;
+  console.log(`✅ Client connected: ${socket.id} | Total: ${connectedClients}`);
+  io.emit('user_count', connectedClients);
 
-// Full debug info
-app.get('/debug', async (req, res) => {
-    const state = gameEngine.getState();
-    const marketCache = marketData.getCache();
+  const state = gameEngine.getState();
+  const cache = safeCache();
 
-    res.json({
-        server: {
-            uptime: Math.floor(process.uptime()),
-            memory: {
-                used: Math.floor(process.memoryUsage().heapUsed / 1024 / 1024),
-                total: Math.floor(process.memoryUsage().heapTotal / 1024 / 1024)
-            },
-            clients: connectedClients
-        },
-        config: {
-            mode: config.mock.enabled ? 'mock' : 'live',
-            mockManualMode: config.mock.manualMode,
-            battleInterval: config.game.battleInterval,
-            marketDataInterval: config.game.marketDataInterval,
-            roundsToWin: config.game.roundsToWin,
-            tokens: config.tokens
-        },
-        game: {
-            currentRound: state.currentRound,
-            score: state.score,
-            health: state.health,
-            scenario: state.currentScenario,
-            combo: state.combo,
-            isGameOver: state.isGameOver,
-            winner: state.winner,
-            lastDamage: state.lastDamage
-        },
-        marketData: {
-            tokenA: {
-                ...marketCache.tokenA,
-                age: Date.now() - marketCache.tokenA.lastUpdate,
-                ageSeconds: Math.floor((Date.now() - marketCache.tokenA.lastUpdate) / 1000)
-            },
-            tokenB: {
-                ...marketCache.tokenB,
-                age: Date.now() - marketCache.tokenB.lastUpdate,
-                ageSeconds: Math.floor((Date.now() - marketCache.tokenB.lastUpdate) / 1000)
-            }
-        },
-        timestamp: new Date().toISOString()
-    });
-});
+  socket.emit('initial_state', {
+    config: {
+      tokenA: config.tokens.tokenA,
+      tokenB: config.tokens.tokenB,
+      roundsToWin: config.game.roundsToWin,
+      isMock: config.mock.enabled
+    },
+    health: state.health,
+    scenario: state.currentScenario,
+    combo: state.combo,
+    currentRound: state.currentRound,
+    score: state.score,
+    isGameOver: state.isGameOver,
+    winner: state.winner,
+    lastDamage: state.lastDamage,
+    marketData: { tokenA: cache.tokenA, tokenB: cache.tokenB }
+  });
 
-// 🔍 QUICK CONNECTION TEST
-app.get('/debug/test-connection', (req, res) => {
-    const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  socket.on('disconnect', () => {
+    connectedClients--;
+    console.log(`❌ Client disconnected: ${socket.id} | Total: ${connectedClients}`);
+    io.emit('user_count', connectedClients);
+  });
 
-    res.json({
-        success: true,
-        message: 'Server is reachable',
-        server: {
-            time: new Date().toISOString(),
-            uptime: Math.floor(process.uptime()),
-            memory: {
-                used: Math.floor(process.memoryUsage().heapUsed / 1024 / 1024),
-                total: Math.floor(process.memoryUsage().heapTotal / 1024 / 1024)
-            }
-        },
-        client: {
-            ip: clientIP,
-            userAgent: req.headers['user-agent']
-        },
-        socketio: {
-            path: '/socket.io',
-            connected: connectedClients,
-            available: true
-        }
-    });
-});
-
-// 📊 MARKET DATA DIAGNOSTICS
-app.get('/debug/market', async (req, res) => {
-    const marketCache = marketData.getCache();
-
-    // Try a fresh fetch
-    let freshData = null;
-    let fetchError = null;
-
-    try {
-        freshData = await marketData.fetchMarketData();
-    } catch (error) {
-        fetchError = error.message;
+  socket.on('manual_battle', () => {
+    if (config.mock.enabled && config.mock.manualMode) {
+      console.log('⚔️ Manual battle triggered');
+      processBattleLoop();
     }
+  });
 
-    res.json({
-        cache: {
-            tokenA: {
-                ...marketCache.tokenA,
-                cacheAge: Date.now() - marketCache.tokenA.lastUpdate,
-                cacheAgeMinutes: Math.floor((Date.now() - marketCache.tokenA.lastUpdate) / 60000)
-            },
-            tokenB: {
-                ...marketCache.tokenB,
-                cacheAge: Date.now() - marketCache.tokenB.lastUpdate,
-                cacheAgeMinutes: Math.floor((Date.now() - marketCache.tokenB.lastUpdate) / 60000)
-            }
-        },
-        freshFetch: {
-            success: !fetchError,
-            error: fetchError,
-            data: freshData
-        },
-        config: {
-            mode: config.mock.enabled ? 'mock' : 'live',
-            fetchInterval: config.game.marketDataInterval,
-            fetchIntervalSeconds: config.game.marketDataInterval / 1000
-        }
-    });
-});
-
-// 🔌 WEBSOCKET DIAGNOSTICS
-app.get('/debug/websocket', (req, res) => {
-    const sockets = Array.from(io.sockets.sockets.values());
-
-    res.json({
-        server: {
-            namespace: '/',
-            clients: connectedClients,
-            rooms: Array.from(io.sockets.adapter.rooms.keys())
-        },
-        clients: sockets.map(socket => ({
-            id: socket.id,
-            connected: socket.connected,
-            transport: socket.conn.transport.name,
-            handshake: {
-                time: socket.handshake.time,
-                address: socket.handshake.address,
-                headers: socket.handshake.headers['user-agent']
-            }
-        })),
-        events: {
-            listening: [
-                'connection',
-                'disconnect',
-                'manual_battle',
-                'reset_game',
-                'test_scenario'
-            ],
-            emitting: [
-                'initial_state',
-                'battle_update',
-                'round_end',
-                'round_start',
-                'game_over',
-                'game_reset',
-                'scenario_change',
-                'user_count'
-            ]
-        }
-    });
-});
-
-// 🧪 TEST EMIT
-app.post('/debug/test-emit', (req, res) => {
-    const { event, data } = req.body;
-
-    if (!event) {
-        return res.status(400).json({ error: 'Event name required' });
+  socket.on('reset_game', () => {
+    gameEngine.resetGame();
+    if (config.mock.enabled && typeof marketData.reset === 'function') {
+      marketData.reset();
     }
+    io.emit('game_reset', {
+      health: gameEngine.getState().health,
+      currentRound: 1,
+      score: { tokenA: 0, tokenB: 0 }
+    });
+    console.log('🔄 Game manually reset');
+  });
 
-    try {
-        io.emit(event, data || {});
-        res.json({
-            success: true,
-            message: `Emitted ${event} to ${connectedClients} clients`,
-            event,
-            data
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
+  socket.on('test_scenario', (scenario) => {
+    gameEngine.state.currentScenario = scenario;
+    io.emit('scenario_change', { scenario });
+    console.log(`🎮 Test scenario: ${scenario}`);
+  });
+
+  if (config.mock.enabled) {
+    socket.on('mock_pump', (data) => {
+      marketData.forcePump(data.token, data.intensity || 1);
+    });
+    socket.on('mock_dump', (data) => {
+      marketData.forceDump(data.token, data.intensity || 1);
+    });
+    socket.on('mock_set_trend', (data) => {
+      marketData.setTrend(data.token, data.trend);
+    });
+    socket.on('mock_set_volatility', (value) => {
+      marketData.setVolatility(value);
+    });
+  }
 });
 
-// 🏥 ENHANCED HEALTH CHECK
+// ═══════════════════════════════════════════════════════════════════════════
+/** HTTP API **/
+// ═══════════════════════════════════════════════════════════════════════════
+app.get('/', (req, res) => {
+  res.json({
+    status: 'running',
+    message: 'Custom Token Battle Arena',
+    version: '2.0.0',
+    mode: config.mock.enabled ? 'MOCK' : 'LIVE',
+    tokens: {
+      tokenA: config.tokens.tokenA.symbol,
+      tokenB: config.tokens.tokenB.symbol
+    }
+  });
+});
+
+// 🧠 “Glup” health za Render (uvijek 200)
 app.get('/health', (req, res) => {
-    const marketCache = marketData.getCache();
-    const state = gameEngine.getState();
+  res.status(200).json({ status: 'ok', t: Date.now() });
+});
 
-    const healthStatus = {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: Math.floor(process.uptime()),
-        checks: {
-            server: {
-                status: 'ok',
-                uptime: process.uptime()
-            },
-            game: {
-                status: state.isGameOver ? 'game_over' : 'running',
-                round: state.currentRound
-            },
-            market: {
-                status: 'ok',
-                tokenA_age: Math.floor((Date.now() - marketCache.tokenA.lastUpdate) / 1000),
-                tokenB_age: Math.floor((Date.now() - marketCache.tokenB.lastUpdate) / 1000),
-                tokenA_mc: marketCache.tokenA.marketCap,
-                tokenB_mc: marketCache.tokenB.marketCap
-            },
-            websocket: {
-                status: 'ok',
-                clients: connectedClients
-            }
-        }
+// Brzi ping
+app.get('/ping', (req, res) => res.send('pong'));
+
+// Status igre
+app.get('/status', (req, res) => {
+  const state = gameEngine.getState();
+  const cache = safeCache();
+
+  res.json({
+    status: 'running',
+    mode: config.mock.enabled ? 'MOCK' : 'LIVE',
+    clients: connectedClients,
+    game: {
+      currentRound: state.currentRound,
+      score: state.score,
+      health: state.health,
+      isGameOver: state.isGameOver,
+      winner: state.winner ? (config.tokens[state.winner]?.symbol || state.winner) : null
+    },
+    market: {
+      tokenA: { ...config.tokens.tokenA, ...cache.tokenA },
+      tokenB: { ...config.tokens.tokenB, ...cache.tokenB }
+    }
+  });
+});
+
+// Trenutni config
+app.get('/api/config', (req, res) => {
+  res.json({
+    mode: config.mock.enabled ? 'mock' : 'live',
+    tokens: {
+      tokenA: config.tokens.tokenA,
+      tokenB: config.tokens.tokenB
+    },
+    game: {
+      roundsToWin: config.game.roundsToWin,
+      maxHealth: config.game.maxHealth,
+      damageMultiplier: config.game.damageMultiplier
+    }
+  });
+});
+
+// Detaljni market podaci (formatirani stringovi)
+app.get('/api/market/details', async (req, res) => {
+  try {
+    const cache = safeCache();
+
+    const toFmt = (n, d = 0) => {
+      if (typeof n !== 'number' || !isFinite(n)) return '—';
+      return n.toLocaleString('en-US', { maximumFractionDigits: d });
+    };
+    const signPct = (n) => {
+      if (typeof n !== 'number' || !isFinite(n)) return '—';
+      return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
     };
 
-    // Check if market data is too old
-    const maxAge = 120; // 2 minutes
-    if (healthStatus.checks.market.tokenA_age > maxAge ||
-        healthStatus.checks.market.tokenB_age > maxAge) {
-        healthStatus.checks.market.status = 'warning';
-        healthStatus.checks.market.message = 'Market data is stale';
-    }
-
-    // Check if market cap is 0
-    if (marketCache.tokenA.marketCap === 0 || marketCache.tokenB.marketCap === 0) {
-        healthStatus.checks.market.status = 'error';
-        healthStatus.checks.market.message = 'Market cap is 0';
-        healthStatus.status = 'degraded';
-    }
-
-    res.json(healthStatus);
+    res.json({
+      timestamp: Date.now(),
+      tokenA: {
+        symbol: config.tokens.tokenA.symbol,
+        name: config.tokens.tokenA.name,
+        address: config.tokens.tokenA.address,
+        chain: config.tokens.tokenA.chain,
+        marketData: {
+          marketCap: cache.tokenA.marketCap,
+          marketCapFormatted: `$${toFmt(cache.tokenA.marketCap)}`,
+          price: cache.tokenA.price,
+          priceFormatted: `$${(Number(cache.tokenA.price) || 0).toFixed(6)}`,
+          change24h: cache.tokenA.priceChange24h,
+          change24hFormatted: signPct(cache.tokenA.priceChange24h),
+          volume24h: cache.tokenA.volume24h,
+          volume24hFormatted: `$${toFmt(cache.tokenA.volume24h)}`,
+          lastUpdate: cache.tokenA.lastUpdate,
+          lastUpdateFormatted: new Date(cache.tokenA.lastUpdate || Date.now()).toLocaleString()
+        }
+      },
+      tokenB: {
+        symbol: config.tokens.tokenB.symbol,
+        name: config.tokens.tokenB.name,
+        address: config.tokens.tokenB.address,
+        chain: config.tokens.tokenB.chain,
+        marketData: {
+          marketCap: cache.tokenB.marketCap,
+          marketCapFormatted: `$${toFmt(cache.tokenB.marketCap)}`,
+          price: cache.tokenB.price,
+          priceFormatted: `$${(Number(cache.tokenB.price) || 0).toFixed(6)}`,
+          change24h: cache.tokenB.priceChange24h,
+          change24hFormatted: signPct(cache.tokenB.priceChange24h),
+          volume24h: cache.tokenB.volume24h,
+          volume24hFormatted: `$${toFmt(cache.tokenB.volume24h)}`,
+          lastUpdate: cache.tokenB.lastUpdate,
+          lastUpdateFormatted: new Date(cache.tokenB.lastUpdate || Date.now()).toLocaleString()
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ /api/market/details error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// 🚨 PING ENDPOINT (ultra lightweight)
-app.get('/ping', (req, res) => {
-    res.send('pong');
+// (Opcionalno) Mock HTTP kontrole
+if (config.mock.enabled) {
+  app.post('/mock/pump/:token', (req, res) => {
+    const token = req.params.token;
+    const intensity = req.body.intensity || 1;
+    marketData.forcePump(token, intensity);
+    io.emit('market_manual_update', safeCache());
+    res.json({ success: true, token, action: 'pump' });
+  });
+
+  app.post('/mock/dump/:token', (req, res) => {
+    const token = req.params.token;
+    const intensity = req.body.intensity || 1;
+    marketData.forceDump(token, intensity);
+    io.emit('market_manual_update', safeCache());
+    res.json({ success: true, token, action: 'dump' });
+  });
+
+  app.post('/mock/trend/:token', (req, res) => {
+    const token = req.params.token;
+    const trend = req.body.trend;
+    marketData.setTrend(token, trend);
+    res.json({ success: true, token, trend });
+  });
+
+  app.post('/mock/volatility', (req, res) => {
+    const value = parseFloat(req.body.value);
+    marketData.setVolatility(value);
+    res.json({ success: true, volatility: value });
+  });
+
+  app.post('/mock/reset', (req, res) => {
+    marketData.reset();
+    io.emit('market_manual_update', safeCache());
+    res.json({ success: true, message: 'Mock data reset' });
+  });
+}
+
+// Jednostavni debug (siguran)
+app.get('/debug', (req, res) => {
+  try {
+    const state = gameEngine.getState();
+    const cache = safeCache();
+    res.json({
+      server: {
+        status: 'running',
+        uptime: process.uptime(),
+        pid: process.pid,
+        nodeVersion: process.version,
+        clients: connectedClients
+      },
+      mode: config.mock.enabled ? 'mock' : 'live',
+      tokens: { tokenA: config.tokens.tokenA, tokenB: config.tokens.tokenB },
+      game: {
+        currentRound: state.currentRound,
+        score: state.score,
+        health: state.health,
+        isGameOver: state.isGameOver,
+        winner: state.winner,
+        scenario: state.currentScenario,
+        combo: state.combo
+      },
+      market: cache,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🎯 SET TOKENS API - NOVO!
+// 🚀 START SERVER + LOOPS (poslije listen za sigurniji health)
 // ═══════════════════════════════════════════════════════════════════════════
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n🚀 Custom Token Battle Arena Server`);
+  console.log(`📡 Port: ${PORT}`);
+  console.log(`🎮 Mode: ${config.mock.enabled ? '🎲 MOCK (TEST)' : '🔴 LIVE'}`);
+  console.log(`⚔  ${config.tokens.tokenA.symbol} (${config.tokens.tokenA.name}) VS ${config.tokens.tokenB.symbol} (${config.tokens.tokenB.name})`);
+  console.log(`📊 Status: http://localhost:${PORT}/status`);
+  console.log(`💚 Health: http://localhost:${PORT}/health`);
 
-app.post('/api/set-tokens', (req, res) => {
-    const { tokenA, tokenB } = req.body;
-    
-    try {
-        if (tokenA) {
-            config.tokens.tokenA = {
-                symbol: tokenA.symbol || config.tokens.tokenA.symbol,
-                name: tokenA.name || config.tokens.tokenA.name,
-                address: tokenA.address || config.tokens.tokenA.address,
-                coingeckoId: tokenA.coingeckoId || config.tokens.tokenA.coingeckoId
-            };
-        }
-        
-        if (tokenB) {
-            config.tokens.tokenB = {
-                symbol: tokenB.symbol || config.tokens.tokenB.symbol,
-                name: tokenB.name || config.tokens.tokenB.name,
-                address: tokenB.address || config.tokens.tokenB.address,
-                coingeckoId: tokenB.coingeckoId || config.tokens.tokenB.coingeckoId
-            };
-        }
-        
-        // Reset sve
-        if (config.mock.enabled) {
-            marketData.reset();
-        }
-        gameEngine.resetGame();
-        
-        // Notifikuj sve klijente
-        io.emit('tokens_updated', {
-            tokenA: config.tokens.tokenA,
-            tokenB: config.tokens.tokenB
-        });
-        
-        console.log('🎯 Tokens updated:', config.tokens.tokenA.symbol, 'vs', config.tokens.tokenB.symbol);
-        
-        res.json({
-            success: true,
-            message: 'Tokens updated successfully',
-            tokens: {
-                tokenA: config.tokens.tokenA,
-                tokenB: config.tokens.tokenB
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
+  // Pokreni loopove s malim delayem da health odmah prođe
+  const MD_INTERVAL = config.game.marketDataInterval || 5000;
+  const BTL_INTERVAL = config.game.battleInterval || 1000;
 
-console.log('\n🐛 DEBUG ENDPOINTS LOADED:');
-console.log('   GET  /debug - Full diagnostic info');
-console.log('   GET  /debug/test-connection - Quick connection test');
-console.log('   GET  /debug/market - Market data diagnostics');
-console.log('   GET  /debug/websocket - WebSocket diagnostics');
-console.log('   POST /debug/test-emit - Test event emission');
-console.log('   GET  /health - Enhanced health check');
-console.log('   GET  /ping - Simple ping');
-console.log('   POST /api/set-tokens - Set custom tokens ⭐ NEW!');
+  setTimeout(() => {
+    fetchMarketDataLoop().catch(() => {});
+    setInterval(fetchMarketDataLoop, MD_INTERVAL);
+  }, 800);
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 🚀 SERVER START
-// ═══════════════════════════════════════════════════════════════════════════
-
-server.listen(PORT, () => {
-    console.log(`\n🚀 Custom Token Battle Arena Server`);
-    console.log(`📡 Port: ${PORT}`);
-    console.log(`🎮 Mode: ${config.mock.enabled ? '🎲 MOCK (TEST)' : '🔴 LIVE'}`);
-    console.log(`\n⚔️  BATTLE:`);
-    console.log(`   ${config.tokens.tokenA.symbol} (${config.tokens.tokenA.name})`);
-    console.log(`   VS`);
-    console.log(`   ${config.tokens.tokenB.symbol} (${config.tokens.tokenB.name})`);
-    console.log(`\n🎮 Best of ${config.game.roundsToWin * 2 - 1} rounds`);
-    console.log(`📊 Status: http://localhost:${PORT}/status`);
-    console.log(`💚 Health: http://localhost:${PORT}/health`);
-
-    if (config.mock.enabled) {
-        console.log(`\n🎮 MOCK CONTROLS (HTTP):`);
-        console.log(`   POST /mock/pump/tokenA - Force pump Token A`);
-        console.log(`   POST /mock/dump/tokenB - Force dump Token B`);
-        console.log(`   POST /mock/trend/tokenA {"trend":"pumping"}`);
-        console.log(`   POST /mock/volatility {"value":0.8}`);
-        console.log(`   POST /mock/reset - Reset market data`);
-    }
-    console.log('\n');
+  setTimeout(() => {
+    processBattleLoop();
+    setInterval(processBattleLoop, BTL_INTERVAL);
+  }, 1200);
 });

@@ -1,24 +1,24 @@
 // ArenaFrame.jsx - COMPLETE WITH ROUND VICTORY AND DEBUG PANEL
-import React, { useEffect } from 'react';
-import { usePortal, useWebSocket, useVideoPlayer } from './hooks';
-import { PortalScreen } from './PortalScreen';
-import { MockControls } from './MockControls';
-import { GameOverlay } from './GameOverlay';
-import RoundVictory from './RoundVictory';
-import { StatusIndicator } from './StatusIndicator';
-import { VideoPlayer } from './VideoPlayer';
-import  HealthBar  from './HealthBar';
-import { TokenShield } from './TokenShield';
-import { ComboDisplay } from './ComboDisplay';
-import { PriceTicker } from './PriceTicker';
-import { StatsPanel } from './StatsPanel';
-import { ScreenFlash } from './ScreenFlash';
-import { DamagePopup } from './DamagePopup';
-import AttackReason from './AttackReason';
-import { DebugPanel } from './DebugPanel.jsx'; // 🆕 ADD THIS IMPORT
-import { cls, getTokenStatus, shouldShakeScreen } from './utils';
-import { DEFAULT_CONFIG } from './constants';
-import './ArenaFrame.css';
+import React, { useEffect } from "react";
+import { usePortal, useWebSocket, useVideoPlayer } from "./hooks";
+import { PortalScreen } from "./PortalScreen";
+import { MockControls } from "./MockControls";
+import { GameOverlay } from "./GameOverlay";
+import RoundVictory from "./RoundVictory";
+import { StatusIndicator } from "./StatusIndicator";
+import { VideoPlayer } from "./VideoPlayer";
+// HealthBar is rendered inside VideoPlayer now
+import { TokenShield } from "./TokenShield";
+import { ComboDisplay } from "./ComboDisplay";
+import { PriceTicker } from "./PriceTicker";
+import { StatsPanel } from "./StatsPanel";
+import { ScreenFlash } from "./ScreenFlash";
+import { DamagePopup } from "./DamagePopup";
+import AttackReason from "./AttackReason";
+import { DebugPanel } from "./DebugPanel.jsx"; // 🆕 ADD THIS IMPORT
+import { cls, getTokenStatus, shouldShakeScreen } from "./utils";
+import { DEFAULT_CONFIG } from "./constants";
+import "./ArenaFrame.css";
 
 export default function ArenaFrame(props) {
     const {
@@ -34,7 +34,12 @@ export default function ArenaFrame(props) {
 
     const portal = usePortal(portalConfig, portalVideos);
     const videoPlayer = useVideoPlayer(portal.hasJoined, videos);
-    const ws = useWebSocket(syncMode, serverUrl, portal.hasJoined, videoPlayer.setCurrentScenario);
+    const ws = useWebSocket(
+        syncMode,
+        serverUrl,
+        portal.hasJoined,
+        videoPlayer.setCurrentScenario
+    );
 
     const shouldShake = shouldShakeScreen(ws.currentScenario);
 
@@ -49,9 +54,11 @@ export default function ArenaFrame(props) {
                 shouldShake && "animate-battle-shake"
             )}
         >
-            <ScreenFlash isActive={ws.flashEffect.active} color={ws.flashEffect.color} />
+            <ScreenFlash
+                isActive={ws.flashEffect.active}
+                color={ws.flashEffect.color}
+            />
             <div className="colosseum-arches" />
-
 
             <div className="torch torch-left" />
             <div className="torch torch-right" />
@@ -80,7 +87,7 @@ export default function ArenaFrame(props) {
                 tokenConfig={ws.tokenConfig}
             />
 
-            {/* LEFT SIDE HUD - TOKEN A */}
+            {/* LEFT SIDE HUD - TOKEN A (PriceTicker + TokenShield) */}
             <div className="absolute top-20 left-6 z-[40]">
                 <PriceTicker
                     token={ws.tokenConfig.tokenA.symbol}
@@ -88,15 +95,7 @@ export default function ArenaFrame(props) {
                     change={ws.marketData.tokenA.change24h}
                     marketCap={ws.marketData.tokenA.marketCap}
                     volume24h={ws.marketData.tokenA.volume24h}
-                />
-            </div>
-
-            <div className="absolute top-[310px] left-6 z-[35]">
-                <HealthBar
-                    health={ws.health.tokenA}
-                    side="left"
-                    label={ws.tokenConfig.tokenA.symbol}
-                    lastDamage={ws.lastDamage.tokenA}
+                    address={ws.tokenConfig.tokenA.address}
                 />
             </div>
 
@@ -104,7 +103,7 @@ export default function ArenaFrame(props) {
                 <TokenShield
                     label={ws.tokenConfig.tokenA.symbol}
                     tone="#6366f1"
-                    icon={ws.tokenConfig.tokenA.icon}
+                    icon={'/images/solana_logo.png'}
                     {...getTokenStatus(ws.currentScenario, "tokenA")}
                     marketChange={ws.marketData.tokenA.change24h}
                 />
@@ -112,7 +111,7 @@ export default function ArenaFrame(props) {
 
             <ComboDisplay combo={ws.combo.tokenA} side="left" />
 
-            {/* RIGHT SIDE HUD - TOKEN B */}
+            {/* RIGHT SIDE HUD - TOKEN B (PriceTicker + TokenShield) */}
             <div className="absolute top-20 right-6 z-[40]">
                 <PriceTicker
                     token={ws.tokenConfig.tokenB.symbol}
@@ -120,15 +119,7 @@ export default function ArenaFrame(props) {
                     change={ws.marketData.tokenB.change24h}
                     marketCap={ws.marketData.tokenB.marketCap}
                     volume24h={ws.marketData.tokenB.volume24h}
-                />
-            </div>
-
-            <div className="absolute top-[310px] right-6 z-[35]">
-                <HealthBar
-                    health={ws.health.tokenB}
-                    side="right"
-                    label={ws.tokenConfig.tokenB.symbol}
-                    lastDamage={ws.lastDamage.tokenB}
+                    address={ws.tokenConfig.tokenB.address}
                 />
             </div>
 
@@ -136,7 +127,7 @@ export default function ArenaFrame(props) {
                 <TokenShield
                     label={ws.tokenConfig.tokenB.symbol}
                     tone="#a855f7"
-                    icon={ws.tokenConfig.tokenB.icon}
+                    icon={'/images/bnb_logo.png'}
                     {...getTokenStatus(ws.currentScenario, "tokenB")}
                     marketChange={ws.marketData.tokenB.change24h}
                 />
@@ -159,13 +150,26 @@ export default function ArenaFrame(props) {
             <div className="laurel laurel-bl" />
             <div className="laurel laurel-br" />
 
-            {/* MAIN VIDEO PLAYER */}
-            <VideoPlayer
-                video1Ref={videoPlayer.video1Ref}
-                video2Ref={videoPlayer.video2Ref}
-                aspect={aspect}
-                fullHeight={fullHeight}
-            />
+            {/* MAIN VIDEO PLAYER (with embedded left/right HealthBars) */}
+            <div className="relative z-10">
+                <div
+                    className="relative mx-auto"
+                    style={{ width: "min(92vw, 1100px)", maxWidth: "min(92vw, 1600px)" }}
+                >
+                    <VideoPlayer
+                        video1Ref={videoPlayer.video1Ref}
+                        video2Ref={videoPlayer.video2Ref}
+                        aspect={aspect}
+                        fullHeight={fullHeight}
+                        leftHealth={ws.health.tokenA}
+                        rightHealth={ws.health.tokenB}
+                        leftLabel={ws.tokenConfig.tokenA.symbol}
+                        rightLabel={ws.tokenConfig.tokenB.symbol}
+                        leftLastDamage={ws.lastDamage.tokenA}
+                        rightLastDamage={ws.lastDamage.tokenB}
+                    />
+                </div>
+            </div>
 
             {/* DEV & OVERLAYS */}
             {devMode && syncMode && (
@@ -178,23 +182,12 @@ export default function ArenaFrame(props) {
 
             {/* Game Over Overlay (ONLY for final game over) */}
             {ws.gameOver && (
-                <GameOverlay winner={ws.gameOver} tokenConfig={ws.tokenConfig} score={ws.score} />
+                <GameOverlay
+                    winner={ws.gameOver}
+                    tokenConfig={ws.tokenConfig}
+                    score={ws.score}
+                />
             )}
-
-            {/* 🐛 DEBUG PANEL - ADD HERE AT THE END */}
-            <DebugPanel
-                isConnected={ws.isConnected}
-                userCount={ws.userCount}
-                marketData={ws.marketData}
-                health={ws.health}
-                round={ws.round}
-                score={ws.score}
-                serverUrl={serverUrl}
-                socketRef={ws.socketRef}
-                connectionAttempts={ws.connectionAttempts}
-                lastError={ws.lastError}
-                connectionHistory={ws.connectionHistory}
-            />
         </section>
     );
 }

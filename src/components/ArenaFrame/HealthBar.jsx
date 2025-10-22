@@ -23,7 +23,8 @@ export default function HealthBar({
                                       maxHealth = 100,
                                       side = "left",
                                       label = "LEGIO",
-                                      lastDamage = 0
+                                      lastDamage = 0,
+                                      orientation = "horizontal" // 'horizontal' | 'vertical'
                                   }) {
     const pct = Math.max(0, Math.min(100, (health / maxHealth) * 100));
     const isLow = pct < 30;
@@ -39,13 +40,44 @@ export default function HealthBar({
         }));
     }, [pct]);
 
+    const isVertical = orientation === 'vertical';
+
+    // Compute fill gradient classes based on side and health state
+    const fillGradientClass = useMemo(() => {
+        // critical state overrides everything (red)
+        if (isCrit) {
+            return isVertical
+                ? "bg-gradient-to-t from-red-600 via-red-500 to-red-400 animate-pulse shadow-[0_0_20px_rgba(220,38,38,0.6)]"
+                : "bg-gradient-to-r from-red-600 via-red-500 to-red-400 animate-pulse shadow-[0_0_20px_rgba(220,38,38,0.6)]";
+        }
+
+        // low state uses warm/orange palette
+        if (isLow) {
+            return isVertical
+                ? "bg-gradient-to-t from-orange-500 via-amber-500 to-yellow-400 shadow-[0_0_15px_rgba(245,158,11,0.5)]"
+                : "bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 shadow-[0_0_15px_rgba(245,158,11,0.5)]";
+        }
+
+        // Normal state: left = purple, right = amber/yellow
+        if (side === 'left') {
+            return isVertical
+                ? "bg-gradient-to-t from-indigo-600 via-purple-500 to-fuchsia-400 shadow-[0_0_15px_rgba(124,58,237,0.35)]"
+                : "bg-gradient-to-r from-indigo-600 via-purple-500 to-fuchsia-400 shadow-[0_0_15px_rgba(124,58,237,0.35)]";
+        }
+
+        // default (right)
+        return isVertical
+            ? "bg-gradient-to-t from-amber-600 via-yellow-500 to-yellow-300 shadow-[0_0_15px_rgba(217,119,6,0.35)]"
+            : "bg-gradient-to-r from-amber-600 via-yellow-500 to-yellow-300 shadow-[0_0_15px_rgba(217,119,6,0.35)]";
+    }, [isCrit, isLow, side, isVertical]);
+
     return (
         <div
             className={cls(
-                "relative w-80",
+                isVertical ? "relative h-80 w-12 sm:w-12" : "relative w-80",
                 tookRecentHit && "animate-pulse"
             )}
-            aria-label={`Health ${Math.round(pct)}%`}
+            aria-label={Health ${Math.round(pct)}%}
         >
             {/* Label Header */}
             <div className="mb-2 flex items-center justify-between px-2">
@@ -58,7 +90,10 @@ export default function HealthBar({
             </div>
 
             {/* Main Health Container */}
-            <div className="relative h-8 rounded-lg border-2 border-amber-900/50 bg-gradient-to-b from-stone-900/80 to-black/60 backdrop-blur-sm shadow-2xl overflow-hidden">
+            <div className={cls(
+                "relative rounded-lg border-2 border-amber-900/50 bg-gradient-to-b from-stone-900/80 to-black/60 backdrop-blur-sm shadow-2xl overflow-hidden",
+                isVertical ? "w-full h-full" : "h-8"
+            )}>
 
                 {/* Background Pattern */}
                 <div className="absolute inset-0 opacity-20">
@@ -66,7 +101,7 @@ export default function HealthBar({
                 </div>
 
                 {/* Shield Segments Background */}
-                <div className="absolute inset-0 flex gap-[2px] px-1 py-1">
+                <div className={cls("absolute inset-0 px-1 py-1", isVertical ? "flex flex-col gap-[2px]" : "flex gap-[2px]") }>
                     {segments.map((s, i) => (
                         <div
                             key={i}
@@ -80,8 +115,8 @@ export default function HealthBar({
                             {/* Rivet decorations */}
                             {s.fill && (
                                 <>
-                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-300/60" />
-                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-300/60" />
+                                    <div className="absolute left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-300/60" style={{top:2}} />
+                                    <div className="absolute left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-300/60" style={{bottom:2}} />
                                 </>
                             )}
                         </div>
@@ -91,14 +126,11 @@ export default function HealthBar({
                 {/* Glowing Fill Bar */}
                 <div
                     className={cls(
-                        "absolute inset-y-0 left-0 transition-all duration-500 ease-out",
-                        isCrit
-                            ? "bg-gradient-to-r from-red-600 via-red-500 to-red-400 animate-pulse shadow-[0_0_20px_rgba(220,38,38,0.6)]"
-                            : isLow
-                                ? "bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 shadow-[0_0_15px_rgba(245,158,11,0.5)]"
-                                : "bg-gradient-to-r from-emerald-600 via-green-500 to-lime-400 shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+                        "absolute transition-all duration-500 ease-out",
+                        isVertical ? "left-0 bottom-0 right-0" : "inset-y-0 left-0",
+                        fillGradientClass
                     )}
-                    style={{ width: `${pct}%` }}
+                    style={ isVertical ? { height: ${pct}% } : { width: ${pct}% } }
                 />
 
                 {/* Shine effect */}
@@ -120,8 +152,10 @@ export default function HealthBar({
                 </div>
             </div>
 
-            {/* Bottom decoration */}
-            <div className="mt-1 h-1 rounded-full bg-gradient-to-r from-transparent via-amber-900/30 to-transparent" />
+            {/* Bottom / Side decoration */}
+            {!isVertical && (
+                <div className="mt-1 h-1 rounded-full bg-gradient-to-r from-transparent via-amber-900/30 to-transparent" />
+            )}
         </div>
     );
 }

@@ -407,50 +407,51 @@ app.post('/api/config/tokenA', async (req, res) => {
         });
     }
 });
-
+// Dodaj u HTTP API sekciju (~linija 230)
+https://arena-frontend-ua44.onrender.com/
 // Set Token B
-app.post('/api/config/tokenB', async (req, res) => {
-    try {
-        const { address, name, symbol, chain } = req.body;
+    app.post('/api/config/tokenB', async (req, res) => {
+        try {
+            const { address, name, symbol, chain } = req.body;
 
-        if (!address) {
-            return res.status(400).json({
+            if (!address) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Token address is required'
+                });
+            }
+
+            config.tokens.tokenB.address = address;
+            if (name) config.tokens.tokenB.name = name;
+            if (symbol) config.tokens.tokenB.symbol = symbol;
+            if (chain) config.tokens.tokenB.chain = chain;
+            config.tokens.tokenB.isMock = false;
+
+            console.log('✅ Token B configured:', config.tokens.tokenB);
+
+            if (!config.mock.enabled) {
+                await marketData.fetchMarketData();
+            }
+
+            io.emit('config_update', {
+                tokenA: config.tokens.tokenA,
+                tokenB: config.tokens.tokenB
+            });
+
+            res.json({
+                success: true,
+                message: 'Token B configured successfully',
+                token: config.tokens.tokenB
+            });
+
+        } catch (error) {
+            console.error('❌ Error configuring Token B:', error);
+            res.status(500).json({
                 success: false,
-                error: 'Token address is required'
+                error: error.message
             });
         }
-
-        config.tokens.tokenB.address = address;
-        if (name) config.tokens.tokenB.name = name;
-        if (symbol) config.tokens.tokenB.symbol = symbol;
-        if (chain) config.tokens.tokenB.chain = chain;
-        config.tokens.tokenB.isMock = false;
-
-        console.log('✅ Token B configured:', config.tokens.tokenB);
-
-        if (!config.mock.enabled) {
-            await marketData.fetchMarketData();
-        }
-
-        io.emit('config_update', {
-            tokenA: config.tokens.tokenA,
-            tokenB: config.tokens.tokenB
-        });
-
-        res.json({
-            success: true,
-            message: 'Token B configured successfully',
-            token: config.tokens.tokenB
-        });
-
-    } catch (error) {
-        console.error('❌ Error configuring Token B:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
+    });
 
 // Set both tokens at once
 app.post('/api/config/tokens', (req, res) => {

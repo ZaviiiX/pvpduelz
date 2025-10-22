@@ -15,7 +15,7 @@ import { StatsPanel } from './StatsPanel';
 import { ScreenFlash } from './ScreenFlash';
 import { DamagePopup } from './DamagePopup';
 import AttackReason from './AttackReason';
-import { DebugPanel } from './DebugPanel'; // 🆕 ADD THIS IMPORT
+import { DebugPanel } from './DebugPanel.jsx'; // 🆕 ADD THIS IMPORT
 import { cls, getTokenStatus, shouldShakeScreen } from './utils';
 import { DEFAULT_CONFIG } from './constants';
 import './ArenaFrame.css';

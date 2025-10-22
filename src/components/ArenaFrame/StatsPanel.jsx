@@ -25,11 +25,11 @@ export function StatsPanel({ score, round, tokenConfig }) {
                         <span className="text-white font-bold">{toRoman(round)}</span>
                     </div>
                     <div className="flex justify-between text-gray-300">
-                        <span>{tokenConfig?.tokenA?.name || 'Token A'}:</span>
+                        <span>{tokenConfig?.tokenA?.name || 'SOL'}:</span>
                         <span className="text-green-400 font-bold">{score.tokenA}</span>
                     </div>
                     <div className="flex justify-between text-gray-300">
-                        <span>{tokenConfig?.tokenB?.name || 'Token B'}:</span>
+                        <span>{tokenConfig?.tokenB?.name || 'BNB'}:</span>
                         <span className="text-yellow-400 font-bold">{score.tokenB}</span>
                     </div>
                 </div>

@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: arena-server
+    runtime: node
+    rootDir: ./arena-server
+    buildCommand: npm install --production
+    startCommand: node server.cjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  - type: web
+    name: arena-frontend
+    runtime: static
+    buildCommand: rm -rf dist node_modules package-lock.json && npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_SERVER_URL
+        value: https://arena-server-gh2h.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

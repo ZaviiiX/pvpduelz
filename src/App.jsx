@@ -7,7 +7,7 @@ function App() {
         <ArenaFrame
             devMode={false}
             syncMode={true}
-            serverUrl="https://arena-server-gh2h.onrender.com"
+            serverUrl="https://arena-server-ua44.onrender.com"
         />
     );
 }

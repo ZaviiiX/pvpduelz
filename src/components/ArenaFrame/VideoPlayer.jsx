@@ -73,6 +73,7 @@ export function VideoPlayer({ video1Ref, video2Ref, aspect, fullHeight }) {
                     ref={video1Ref}
                     playsInline
                     muted
+                    loop
                     preload="auto"
                     style={{
                         position: 'absolute',
@@ -88,6 +89,7 @@ export function VideoPlayer({ video1Ref, video2Ref, aspect, fullHeight }) {
                     ref={video2Ref}
                     playsInline
                     muted
+                    loop
                     preload="auto"
                     style={{
                         position: 'absolute',

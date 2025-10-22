@@ -1143,3 +1143,298 @@
     position: relative;
     z-index: 1;
 }
+/* ============================================
+   RESPONSIVE ADDITIONS
+   ============================================ */
+
+/* Mobile-first adjustments */
+@media (max-width: 640px) {
+    .price-ticker {
+        min-height: 80px;
+        padding: 8px 12px !important;
+    }
+
+    .price-ticker::before,
+    .price-ticker::after {
+        font-size: 8px;
+    }
+
+    .stats-panel {
+        padding: 12px 16px !important;
+        min-width: auto !important;
+    }
+
+    .stats-panel::after {
+        font-size: 18px;
+        top: -16px;
+    }
+
+    .combo-display {
+        padding: 12px 24px !important;
+        top: 100px !important;
+    }
+
+    .combo-display .text-2xl {
+        font-size: 1.25rem !important;
+    }
+
+    .damage-popup {
+        font-size: 48px !important;
+        top: 30% !important;
+    }
+
+    .token-shield {
+        width: 80px !important;
+        height: 95px !important;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 641px) and (max-width: 1024px) {
+    .price-ticker {
+        min-height: 90px;
+        padding: 10px 14px !important;
+    }
+
+    .stats-panel {
+        padding: 16px 20px !important;
+    }
+
+    .combo-display {
+        top: 120px !important;
+    }
+
+    .token-shield {
+        width: 100px !important;
+        height: 115px !important;
+    }
+}
+
+/* Large desktop - full effects */
+@media (min-width: 1280px) {
+    .price-ticker:hover {
+        transform: translateY(-3px);
+    }
+
+    .stats-panel:hover {
+        transform: scale(1.02);
+    }
+}
+
+/* Ultra-wide - prevent stretching */
+@media (min-width: 1920px) {
+    .price-ticker-wrapper {
+        max-width: 280px;
+    }
+}
+
+/* Landscape mobile */
+@media (max-width: 900px) and (orientation: landscape) {
+    .stats-panel {
+        position: fixed;
+        bottom: 8px !important;
+        right: 8px !important;
+        left: auto !important;
+    }
+
+    .price-ticker-wrapper {
+        max-width: 160px;
+    }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .gold-text {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    .health-bar-container {
+        border-width: 3px;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .btn-primary {
+        min-height: 48px;
+        padding: 16px 48px !important;
+    }
+
+    .price-ticker {
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Dark mode enhancement */
+@media (prefers-color-scheme: dark) {
+    .stone-bg {
+        filter: brightness(0.95);
+    }
+}
+
+/* Print styles (for screenshots) */
+@media print {
+    .torch,
+    .pillar,
+    .scanlines,
+    .laurel {
+        display: none !important;
+    }
+
+    .stone-bg {
+        background: white;
+    }
+}
+
+/* Container queries support (modern browsers) */
+@container (max-width: 640px) {
+    .price-ticker {
+        font-size: 0.875rem;
+    }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+    .absolute.top-2,
+    .absolute.top-4 {
+        padding-top: max(8px, env(safe-area-inset-top));
+    }
+
+    .absolute.bottom-2,
+    .absolute.bottom-4 {
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+
+    .absolute.left-2,
+    .absolute.left-4 {
+        padding-left: max(8px, env(safe-area-inset-left));
+    }
+
+    .absolute.right-2,
+    .absolute.right-4 {
+        padding-right: max(8px, env(safe-area-inset-right));
+    }
+}
+
+/* Flexbox gap fallback for older browsers */
+@supports not (gap: 1rem) {
+    .flex {
+        margin: -0.5rem;
+    }
+
+    .flex > * {
+        margin: 0.5rem;
+    }
+}
+
+/* Grid gap fallback */
+@supports not (gap: 1rem) {
+    .grid {
+        grid-gap: 1rem;
+    }
+}
+
+/* Backdrop filter fallback */
+@supports not (backdrop-filter: blur(10px)) {
+    .glass-card,
+    .glass-dark {
+        background: rgba(42, 24, 16, 0.95) !important;
+    }
+}
+
+/* Clip-path fallback */
+@supports not (clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%)) {
+    .health-bar-container,
+    .stats-panel,
+    .btn-primary,
+    .mock-controls {
+        border-radius: 8px;
+    }
+}
+
+/* CSS custom properties for theming */
+:root {
+    --color-gold: #d4af37;
+    --color-bronze: #cd7f32;
+    --color-amber: #f59e0b;
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+}
+
+/* Utility classes for responsive spacing */
+.spacing-responsive {
+    padding: var(--spacing-sm);
+}
+
+@media (min-width: 640px) {
+    .spacing-responsive {
+        padding: var(--spacing-md);
+    }
+}
+
+@media (min-width: 1024px) {
+    .spacing-responsive {
+        padding: var(--spacing-lg);
+    }
+}
+
+/* Smooth scrolling */
+@media (prefers-reduced-motion: no-preference) {
+    html {
+        scroll-behavior: smooth;
+    }
+}
+
+/* Focus visible for accessibility */
+*:focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+}
+
+/* Loading skeleton states */
+.skeleton {
+    background: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.03) 0%,
+            rgba(255, 255, 255, 0.08) 50%,
+            rgba(255, 255, 255, 0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Text selection styling */
+::selection {
+    background-color: var(--color-gold);
+    color: #000;
+}
+
+::-moz-selection {
+    background-color: var(--color-gold);
+    color: #000;
+}

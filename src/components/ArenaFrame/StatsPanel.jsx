@@ -1,3 +1,4 @@
+// StatsPanel.jsx - RESPONSIVE VERSION
 import React from 'react';
 
 function toRoman(num) {
@@ -16,21 +17,23 @@ function toRoman(num) {
 
 export function StatsPanel({ score, round }) {
     return (
-        <div className="absolute bottom-6 right-6 z-20">
-            <div className="stats-panel">
-                <div className="text-sm font-bold gold-text mb-3 font-ancient">TABULA</div>
-                <div className="flex flex-col gap-2 text-sm font-scroll">
+        <div className="w-full sm:w-auto">
+            <div className="stats-panel px-4 sm:px-6 py-3 sm:py-4">
+                <div className="text-xs sm:text-sm font-bold gold-text mb-2 sm:mb-3 font-ancient text-center sm:text-left">
+                    TABULA
+                </div>
+                <div className="flex flex-col gap-1.5 sm:gap-2 text-xs sm:text-sm font-scroll">
                     <div className="flex justify-between text-gray-300">
                         <span>Round:</span>
-                        <span className="text-white font-bold">{toRoman(round)}</span>
+                        <span className="text-white font-bold ml-4">{toRoman(round)}</span>
                     </div>
                     <div className="flex justify-between text-gray-300">
                         <span>Token A:</span>
-                        <span className="text-green-400 font-bold">{score.tokenA}</span>
+                        <span className="text-green-400 font-bold ml-4">{score.tokenA}</span>
                     </div>
                     <div className="flex justify-between text-gray-300">
                         <span>Token B:</span>
-                        <span className="text-yellow-400 font-bold">{score.tokenB}</span>
+                        <span className="text-yellow-400 font-bold ml-4">{score.tokenB}</span>
                     </div>
                 </div>
             </div>

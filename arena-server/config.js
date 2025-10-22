@@ -2,14 +2,14 @@
 module.exports = {
     tokens: {
         tokenA: {
-          'name': 'PUMPY Token',
-          'symbol': 'PUMPY',
+          'name': 'SOL Token',
+          'symbol': 'SOL',
           'address': 'FxtGCy79AK9BosEm6NQGddy6Vwmar4vG4nArBqhxpump',
           'chain': 'solana'
 },
         tokenB: {
-          'name': 'BNBX Token',
-          'symbol': 'BNBX',
+          'name': 'BNB Token',
+          'symbol': 'BNB',
           'address': '0x444425ab9a35b32e0f6b18cf1266d39f760e2640',
           'chain': 'bsc'
 }

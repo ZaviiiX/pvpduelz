@@ -234,418 +234,213 @@ io.on('connection', (socket) => {
 app.get('/', (req, res) => {
     res.json({
         status: 'running',
-        message: 'Custom Token Battle Arena',
-        version: '2.0.0',
-        mode: config.mock.enabled ? 'MOCK' : 'LIVE',
-        tokens: {
+        mode: config.mock.enabled ? 'mock' : 'live',
+        game: {
             tokenA: config.tokens.tokenA.symbol,
-            tokenB: config.tokens.tokenB.symbol
+            tokenB: config.tokens.tokenB.symbol,
+            roundsToWin: config.game.roundsToWin
+        },
+        server: {
+            connectedClients,
+            uptime: Math.floor(process.uptime())
         }
     });
 });
 
-// Health check endpoints
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'ok',
-        uptime: process.uptime(),
-        timestamp: Date.now()
-    });
-});
-
-app.get('/api/health', (req, res) => {
-    res.status(200).json({
-        status: 'ok',
-        uptime: process.uptime(),
-        timestamp: Date.now()
-    });
-});
-
-// Game status endpoint
+// Current status
 app.get('/status', (req, res) => {
     const state = gameEngine.getState();
     const marketCache = marketData.getCache();
 
     res.json({
-        status: 'running',
-        mode: config.mock.enabled ? 'MOCK' : 'LIVE',
-        clients: connectedClients,
         game: {
             currentRound: state.currentRound,
             score: state.score,
             health: state.health,
+            scenario: state.currentScenario,
             isGameOver: state.isGameOver,
-            winner: state.winner ? config.tokens[state.winner].symbol : null
+            winner: state.winner,
+            combo: state.combo
         },
-        market: {
-            tokenA: {
-                ...config.tokens.tokenA,
-                ...marketCache.tokenA
-            },
-            tokenB: {
-                ...config.tokens.tokenB,
-                ...marketCache.tokenB
-            }
-        }
-    });
-});
-
-// Get current configuration
-app.get('/api/config', (req, res) => {
-    res.json({
-        mode: config.mock.enabled ? 'mock' : 'live',
         tokens: {
             tokenA: config.tokens.tokenA,
             tokenB: config.tokens.tokenB
         },
-        game: {
-            roundsToWin: config.game.roundsToWin,
-            maxHealth: config.game.maxHealth,
-            damageMultiplier: config.game.damageMultiplier
-        }
-    });
-});
-
-const fs = require('fs');
-const path = require('path');
-
-// Get EXACT market data with full details
-app.get('/api/market/details', async (req, res) => {
-    try {
-        const cache = marketData.getCache();
-
-        res.json({
-            timestamp: Date.now(),
+        marketData: {
             tokenA: {
-                symbol: config.tokens.tokenA.symbol,
-                name: config.tokens.tokenA.name,
-                address: config.tokens.tokenA.address,
-                chain: config.tokens.tokenA.chain,
-                marketData: {
-                    marketCap: cache.tokenA.marketCap,
-                    marketCapFormatted: `$${cache.tokenA.marketCap.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
-                    price: cache.tokenA.price,
-                    priceFormatted: `$${cache.tokenA.price.toFixed(6)}`,
-                    change24h: cache.tokenA.priceChange24h,
-                    change24hFormatted: `${cache.tokenA.priceChange24h >= 0 ? '+' : ''}${cache.tokenA.priceChange24h.toFixed(2)}%`,
-                    volume24h: cache.tokenA.volume24h,
-                    volume24hFormatted: `$${cache.tokenA.volume24h.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
-                    lastUpdate: cache.tokenA.lastUpdate,
-                    lastUpdateFormatted: new Date(cache.tokenA.lastUpdate).toLocaleString()
-                }
+                ...marketCache.tokenA,
+                age: Date.now() - marketCache.tokenA.lastUpdate,
+                ageSeconds: Math.floor((Date.now() - marketCache.tokenA.lastUpdate) / 1000)
             },
             tokenB: {
-                symbol: config.tokens.tokenB.symbol,
-                name: config.tokens.tokenB.name,
-                address: config.tokens.tokenB.address,
-                chain: config.tokens.tokenB.chain,
-                marketData: {
-                    marketCap: cache.tokenB.marketCap,
-                    marketCapFormatted: `$${cache.tokenB.marketCap.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
-                    price: cache.tokenB.price,
-                    priceFormatted: `$${cache.tokenB.price.toFixed(6)}`,
-                    change24h: cache.tokenB.priceChange24h,
-                    change24hFormatted: `${cache.tokenB.priceChange24h >= 0 ? '+' : ''}${cache.tokenB.priceChange24h.toFixed(2)}%`,
-                    volume24h: cache.tokenB.volume24h,
-                    volume24hFormatted: `$${cache.tokenB.volume24h.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
-                    lastUpdate: cache.tokenB.lastUpdate,
-                    lastUpdateFormatted: new Date(cache.tokenB.lastUpdate).toLocaleString()
-                }
+                ...marketCache.tokenB,
+                age: Date.now() - marketCache.tokenB.lastUpdate,
+                ageSeconds: Math.floor((Date.now() - marketCache.tokenB.lastUpdate) / 1000)
             }
-        });
-    } catch (error) {
-        res.status(500).json({
-            error: error.message
-        });
-    }
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🔧 TOKEN CONFIGURATION ENDPOINTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Set Token A
-app.post('/api/config/tokenA', async (req, res) => {
-    try {
-        const { address, name, symbol, chain } = req.body;
-
-        if (!address) {
-            return res.status(400).json({
-                success: false,
-                error: 'Token address is required'
-            });
-        }
-
-        config.tokens.tokenA.address = address;
-        if (name) config.tokens.tokenA.name = name;
-        if (symbol) config.tokens.tokenA.symbol = symbol;
-        if (chain) config.tokens.tokenA.chain = chain;
-        config.tokens.tokenA.isMock = false;
-
-        console.log('✅ Token A configured:', config.tokens.tokenA);
-
-        if (!config.mock.enabled) {
-            await marketData.fetchMarketData();
-        }
-
-        io.emit('config_update', {
-            tokenA: config.tokens.tokenA,
-            tokenB: config.tokens.tokenB
-        });
-
-        res.json({
-            success: true,
-            message: 'Token A configured successfully',
-            token: config.tokens.tokenA
-        });
-
-    } catch (error) {
-        console.error('❌ Error configuring Token A:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-// Dodaj u HTTP API sekciju (~linija 230)
-https://arena-frontend-ua44.onrender.com/
-// Set Token B
-    app.post('/api/config/tokenB', async (req, res) => {
-        try {
-            const { address, name, symbol, chain } = req.body;
-
-            if (!address) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Token address is required'
-                });
-            }
-
-            config.tokens.tokenB.address = address;
-            if (name) config.tokens.tokenB.name = name;
-            if (symbol) config.tokens.tokenB.symbol = symbol;
-            if (chain) config.tokens.tokenB.chain = chain;
-            config.tokens.tokenB.isMock = false;
-
-            console.log('✅ Token B configured:', config.tokens.tokenB);
-
-            if (!config.mock.enabled) {
-                await marketData.fetchMarketData();
-            }
-
-            io.emit('config_update', {
-                tokenA: config.tokens.tokenA,
-                tokenB: config.tokens.tokenB
-            });
-
-            res.json({
-                success: true,
-                message: 'Token B configured successfully',
-                token: config.tokens.tokenB
-            });
-
-        } catch (error) {
-            console.error('❌ Error configuring Token B:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message
-            });
-        }
+        },
+        server: {
+            connectedClients,
+            mode: config.mock.enabled ? 'mock' : 'live',
+            uptime: Math.floor(process.uptime())
+        },
+        timestamp: new Date().toISOString()
     });
-
-// Set both tokens at once
-app.post('/api/config/tokens', (req, res) => {
-    try {
-        const { tokenA, tokenB } = req.body;
-
-        // Read current config
-        const configPath = path.join(__dirname, 'config.js');
-        let configContent = fs.readFileSync(configPath, 'utf8');
-
-        // Update tokenA
-        if (tokenA) {
-            configContent = configContent.replace(
-                /tokenA:\s*{[^}]*}/s,
-                `tokenA: ${JSON.stringify(tokenA, null, 12).replace(/"/g, "'")}`
-            );
-        }
-
-        // Update tokenB
-        if (tokenB) {
-            configContent = configContent.replace(
-                /tokenB:\s*{[^}]*}/s,
-                `tokenB: ${JSON.stringify(tokenB, null, 12).replace(/"/g, "'")}`
-            );
-        }
-
-        // Write back to file
-        fs.writeFileSync(configPath, configContent);
-
-        // Reload config
-        delete require.cache[require.resolve('./config')];
-        const newConfig = require('./config');
-
-        res.json({ success: true, tokens: newConfig.tokens });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Toggle between mock and live mode
-app.post('/api/config/mode', (req, res) => {
-    try {
-        const { mode } = req.body;
-
-        if (mode === 'mock') {
-            config.mock.enabled = true;
-            console.log('🎲 Switched to MOCK mode');
-        } else if (mode === 'live') {
-            config.mock.enabled = false;
-            console.log('🔴 Switched to LIVE mode');
-        } else {
-            return res.status(400).json({
-                success: false,
-                error: 'Mode must be "mock" or "live"'
-            });
-        }
-
-        io.emit('mode_change', {
-            mode: config.mock.enabled ? 'mock' : 'live'
-        });
-
-        res.json({
-            success: true,
-            mode: config.mock.enabled ? 'mock' : 'live'
-        });
-
-    } catch (error) {
-        console.error('❌ Error changing mode:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// Admin reset endpoint
-app.post('/admin/reset', (req, res) => {
-    gameEngine.resetGame();
-    if (config.mock.enabled) {
-        marketData.reset();
-    }
-    io.emit('game_reset', {
-        health: gameEngine.getState().health,
-        currentRound: 1,
-        score: { tokenA: 0, tokenB: 0 }
-    });
-    res.json({ success: true, message: 'Game reset' });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🎮 MOCK CONTROL ENDPOINTS (HTTP API)
+// 🎮 MOCK CONTROL ENDPOINTS
 // ═══════════════════════════════════════════════════════════════════════════
 
 if (config.mock.enabled) {
-    app.post('/mock/pump/:token', (req, res) => {
-        const token = req.params.token;
+    // Force pump tokenA
+    app.post('/mock/pump/tokenA', (req, res) => {
         const intensity = req.body.intensity || 1;
-        marketData.forcePump(token, intensity);
-        io.emit('market_manual_update', marketData.getCache());
-        res.json({ success: true, token, action: 'pump' });
+        marketData.forcePump('tokenA', intensity);
+        res.json({
+            success: true,
+            message: `Token A pumped (intensity: ${intensity})`,
+            cache: marketData.getCache().tokenA
+        });
     });
 
-    app.post('/mock/dump/:token', (req, res) => {
-        const token = req.params.token;
+    // Force pump tokenB
+    app.post('/mock/pump/tokenB', (req, res) => {
         const intensity = req.body.intensity || 1;
-        marketData.forceDump(token, intensity);
-        io.emit('market_manual_update', marketData.getCache());
-        res.json({ success: true, token, action: 'dump' });
+        marketData.forcePump('tokenB', intensity);
+        res.json({
+            success: true,
+            message: `Token B pumped (intensity: ${intensity})`,
+            cache: marketData.getCache().tokenB
+        });
     });
 
+    // Force dump tokenA
+    app.post('/mock/dump/tokenA', (req, res) => {
+        const intensity = req.body.intensity || 1;
+        marketData.forceDump('tokenA', intensity);
+        res.json({
+            success: true,
+            message: `Token A dumped (intensity: ${intensity})`,
+            cache: marketData.getCache().tokenA
+        });
+    });
+
+    // Force dump tokenB
+    app.post('/mock/dump/tokenB', (req, res) => {
+        const intensity = req.body.intensity || 1;
+        marketData.forceDump('tokenB', intensity);
+        res.json({
+            success: true,
+            message: `Token B dumped (intensity: ${intensity})`,
+            cache: marketData.getCache().tokenB
+        });
+    });
+
+    // Set trend for tokenA or tokenB
     app.post('/mock/trend/:token', (req, res) => {
-        const token = req.params.token;
-        const trend = req.body.trend;
+        const token = req.params.token; // "tokenA" or "tokenB"
+        const { trend } = req.body; // "pumping", "dumping", "sideways"
+
+        if (!['tokenA', 'tokenB'].includes(token)) {
+            return res.status(400).json({ error: 'Invalid token (use tokenA or tokenB)' });
+        }
+
+        if (!['pumping', 'dumping', 'sideways'].includes(trend)) {
+            return res.status(400).json({ error: 'Invalid trend (use pumping/dumping/sideways)' });
+        }
+
         marketData.setTrend(token, trend);
-        res.json({ success: true, token, trend });
+
+        res.json({
+            success: true,
+            message: `${token} trend set to ${trend}`,
+            cache: marketData.getCache()[token]
+        });
     });
 
+    // Set volatility
     app.post('/mock/volatility', (req, res) => {
-        const value = parseFloat(req.body.value);
+        const { value } = req.body; // 0.1 to 2.0
+
+        if (!value || value < 0.1 || value > 2.0) {
+            return res.status(400).json({ error: 'Volatility must be between 0.1 and 2.0' });
+        }
+
         marketData.setVolatility(value);
-        res.json({ success: true, volatility: value });
+
+        res.json({
+            success: true,
+            message: `Volatility set to ${value}`,
+            volatility: value
+        });
     });
 
+    // Reset mock market data
     app.post('/mock/reset', (req, res) => {
         marketData.reset();
-        io.emit('market_manual_update', marketData.getCache());
-        res.json({ success: true, message: 'Mock data reset' });
+        res.json({
+            success: true,
+            message: 'Mock market data reset',
+            cache: marketData.getCache()
+        });
+    });
+
+    // Get mock info
+    app.get('/mock/info', (req, res) => {
+        res.json({
+            enabled: config.mock.enabled,
+            manualMode: config.mock.manualMode,
+            cache: marketData.getCache(),
+            endpoints: [
+                'POST /mock/pump/tokenA',
+                'POST /mock/pump/tokenB',
+                'POST /mock/dump/tokenA',
+                'POST /mock/dump/tokenB',
+                'POST /mock/trend/:token {"trend":"pumping|dumping|sideways"}',
+                'POST /mock/volatility {"value":0.5-2.0}',
+                'POST /mock/reset'
+            ]
+        });
     });
 }
-// server-debug-endpoints.cjs - ADD TO YOUR SERVER.CJS
 
-// 🐛 COMPREHENSIVE DEBUG ENDPOINT
-app.get('/debug', (req, res) => {
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔧 DEBUG ENDPOINTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Full debug info
+app.get('/debug', async (req, res) => {
     const state = gameEngine.getState();
     const marketCache = marketData.getCache();
 
     res.json({
         server: {
-            status: 'running',
-            uptime: process.uptime(),
-            memory: process.memoryUsage(),
-            pid: process.pid,
-            nodeVersion: process.version,
-            platform: process.platform
+            uptime: Math.floor(process.uptime()),
+            memory: {
+                used: Math.floor(process.memoryUsage().heapUsed / 1024 / 1024),
+                total: Math.floor(process.memoryUsage().heapTotal / 1024 / 1024)
+            },
+            clients: connectedClients
         },
         config: {
             mode: config.mock.enabled ? 'mock' : 'live',
-            tokens: {
-                tokenA: {
-                    symbol: config.tokens.tokenA.symbol,
-                    name: config.tokens.tokenA.name,
-                    chain: config.tokens.tokenA.chain,
-                    isMock: config.tokens.tokenA.isMock
-                },
-                tokenB: {
-                    symbol: config.tokens.tokenB.symbol,
-                    name: config.tokens.tokenB.name,
-                    chain: config.tokens.tokenB.chain,
-                    isMock: config.tokens.tokenB.isMock
-                }
-            },
-            intervals: {
-                battleInterval: config.game.battleInterval,
-                marketDataInterval: config.game.marketDataInterval,
-                attackCooldown: config.game.attackCooldown
-            }
-        },
-        connections: {
-            socketio: {
-                connected: connectedClients,
-                transports: io.sockets.sockets.size > 0
-                    ? Array.from(io.sockets.sockets.values()).map(s => ({
-                        id: s.id,
-                        transport: s.conn.transport.name
-                    }))
-                    : []
-            }
+            mockManualMode: config.mock.manualMode,
+            battleInterval: config.game.battleInterval,
+            marketDataInterval: config.game.marketDataInterval,
+            roundsToWin: config.game.roundsToWin,
+            tokens: config.tokens
         },
         game: {
             currentRound: state.currentRound,
-            maxRounds: state.maxRounds,
-            isRoundActive: state.isRoundActive,
-            isGameOver: state.isGameOver,
-            winner: state.winner,
             score: state.score,
             health: state.health,
+            scenario: state.currentScenario,
             combo: state.combo,
-            currentScenario: state.currentScenario,
-            lastAttacker: state.lastAttacker,
-            lastAttackTime: state.lastAttackTime,
-            timeSinceLastAttack: Date.now() - state.lastAttackTime,
-            cooldownRemaining: Math.max(0, config.game.attackCooldown - (Date.now() - state.lastAttackTime))
+            isGameOver: state.isGameOver,
+            winner: state.winner,
+            lastDamage: state.lastDamage
         },
-        market: {
+        marketData: {
             tokenA: {
                 ...marketCache.tokenA,
                 age: Date.now() - marketCache.tokenA.lastUpdate,
@@ -849,6 +644,62 @@ app.get('/ping', (req, res) => {
     res.send('pong');
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎯 SET TOKENS API - NOVO!
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.post('/api/set-tokens', (req, res) => {
+    const { tokenA, tokenB } = req.body;
+    
+    try {
+        if (tokenA) {
+            config.tokens.tokenA = {
+                symbol: tokenA.symbol || config.tokens.tokenA.symbol,
+                name: tokenA.name || config.tokens.tokenA.name,
+                address: tokenA.address || config.tokens.tokenA.address,
+                coingeckoId: tokenA.coingeckoId || config.tokens.tokenA.coingeckoId
+            };
+        }
+        
+        if (tokenB) {
+            config.tokens.tokenB = {
+                symbol: tokenB.symbol || config.tokens.tokenB.symbol,
+                name: tokenB.name || config.tokens.tokenB.name,
+                address: tokenB.address || config.tokens.tokenB.address,
+                coingeckoId: tokenB.coingeckoId || config.tokens.tokenB.coingeckoId
+            };
+        }
+        
+        // Reset sve
+        if (config.mock.enabled) {
+            marketData.reset();
+        }
+        gameEngine.resetGame();
+        
+        // Notifikuj sve klijente
+        io.emit('tokens_updated', {
+            tokenA: config.tokens.tokenA,
+            tokenB: config.tokens.tokenB
+        });
+        
+        console.log('🎯 Tokens updated:', config.tokens.tokenA.symbol, 'vs', config.tokens.tokenB.symbol);
+        
+        res.json({
+            success: true,
+            message: 'Tokens updated successfully',
+            tokens: {
+                tokenA: config.tokens.tokenA,
+                tokenB: config.tokens.tokenB
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 console.log('\n🐛 DEBUG ENDPOINTS LOADED:');
 console.log('   GET  /debug - Full diagnostic info');
 console.log('   GET  /debug/test-connection - Quick connection test');
@@ -857,6 +708,7 @@ console.log('   GET  /debug/websocket - WebSocket diagnostics');
 console.log('   POST /debug/test-emit - Test event emission');
 console.log('   GET  /health - Enhanced health check');
 console.log('   GET  /ping - Simple ping');
+console.log('   POST /api/set-tokens - Set custom tokens ⭐ NEW!');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🚀 SERVER START

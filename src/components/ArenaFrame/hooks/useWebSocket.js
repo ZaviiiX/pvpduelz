@@ -1,4 +1,4 @@
-// useWebSocket-DEBUG.js - Enhanced with detailed logging
+// useWebSocket.js - WITH DELAYED DAMAGE FOR ATTACK SEQUENCE
 import { useState, useRef, useEffect } from 'react';
 import io from 'socket.io-client';
 import {
@@ -114,7 +114,7 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
         preCheck();
 
         const socket = io(serverUrl, {
-            transports: ['websocket', 'polling'], // 🆕 Try both
+            transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
@@ -223,17 +223,24 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
             }
         });
 
+        // 🔥 FIXED BATTLE UPDATE - DELAYED HP/DAMAGE
         socket.on('battle_update', (update) => {
-            console.log('⚔️ Battle update:', update.scenario);
+            console.log('⚔️ Battle update received:', update.scenario);
             logConnection('battle_update', { scenario: update.scenario, damage: update.damage });
 
-            setHealth(update.health);
+            // 1️⃣ ODMAH - Pokreni attack video
+            if (update.scenario) {
+                console.log('🎬 Playing attack animation:', update.scenario);
+                updateScenario(update.scenario, 'websocket');
+            }
+
+            // Update market data i ostale non-visual stvari odmah
             setMarketData(update.marketData);
             setCombo(update.combo);
             setScore(update.score);
-            setLastDamage(update.lastDamage);
             setRound(update.currentRound);
 
+            // Show attack reason odmah
             if (update.attackerChange !== undefined && update.defenderChange !== undefined) {
                 setAttackReason({
                     attacker: update.attacker,
@@ -243,37 +250,45 @@ export function useWebSocket(syncMode, serverUrl, hasJoined, setCurrentScenario)
                 });
             }
 
-            if (update.scenario) {
-                updateScenario(update.scenario, 'websocket');
-            }
-
-            if (update.defender === 'tokenA') {
-                setDamagePopup(prev => ({ ...prev, tokenA: update.damage }));
-                setSafeTimeout(() => {
-                    setDamagePopup(prev => ({ ...prev, tokenA: null }));
-                }, 1500);
-            } else if (update.defender === 'tokenB') {
-                setDamagePopup(prev => ({ ...prev, tokenB: update.damage }));
-                setSafeTimeout(() => {
-                    setDamagePopup(prev => ({ ...prev, tokenB: null }));
-                }, 1500);
-            }
-
-            setFlashEffect({ active: true, color: 'red' });
+            // 2️⃣ DELAY 2s - Smanji HP i prikaži damage nakon što se vidi udarac
             setSafeTimeout(() => {
-                setFlashEffect({ active: false, color: 'red' });
-            }, 300);
+                console.log('💥 Applying damage after animation');
+
+                setHealth(update.health);
+                setLastDamage(update.lastDamage);
+
+                if (update.defender === 'tokenA') {
+                    setDamagePopup(prev => ({ ...prev, tokenA: update.damage }));
+                    setSafeTimeout(() => {
+                        setDamagePopup(prev => ({ ...prev, tokenA: null }));
+                    }, 1500);
+                } else if (update.defender === 'tokenB') {
+                    setDamagePopup(prev => ({ ...prev, tokenB: update.damage }));
+                    setSafeTimeout(() => {
+                        setDamagePopup(prev => ({ ...prev, tokenB: null }));
+                    }, 1500);
+                }
+
+                setFlashEffect({ active: true, color: 'red' });
+                setSafeTimeout(() => {
+                    setFlashEffect({ active: false, color: 'red' });
+                }, 300);
+            }, 2000); // 2 second delay for impact
         });
 
+        // 🏆 ROUND END - Prikaži nakon što se damage vidi
         socket.on('round_end', (data) => {
             console.log('🏆 Round end:', data.winner);
             logConnection('round_end', { winner: data.winner, round: data.currentRound });
 
-            setScore(data.score);
-            setRoundVictory({
-                winner: data.winner,
-                currentRound: data.currentRound
-            });
+            // Delay da se damage vidi pre victory overlay-a
+            setSafeTimeout(() => {
+                setScore(data.score);
+                setRoundVictory({
+                    winner: data.winner,
+                    currentRound: data.currentRound
+                });
+            }, 500); // Kratki delay
         });
 
         socket.on('game_over', (data) => {

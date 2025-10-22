@@ -214,10 +214,11 @@ app.get('/', (req, res) => {
   });
 });
 
-// 🧠 “Glup” health za Render (uvijek 200)
-app.get('/health', (req, res) => {
+// 🧠 Render health endpoint (mora biti /api/health)
+app.get(['/health', '/api/health'], (req, res) => {
   res.status(200).json({ status: 'ok', t: Date.now() });
 });
+
 
 // Brzi ping
 app.get('/ping', (req, res) => res.send('pong'));

@@ -408,21 +408,7 @@ app.post('/api/config/tokenA', async (req, res) => {
     }
 });
 // Dodaj u HTTP API sekciju (~linija 230)
-app.post('/api/set-tokens', (req, res) => {
-    const { tokenA, tokenB } = req.body;
-    
-    if (tokenA) {
-        config.tokens.tokenA = { ...config.tokens.tokenA, ...tokenA };
-    }
-    if (tokenB) {
-        config.tokens.tokenB = { ...config.tokens.tokenB, ...tokenB };
-    }
-    
-    marketData.reset(); // Reset cache
-    gameEngine.resetGame(); // Reset igre
-    
-    res.json({ success: true, tokens: config.tokens });
-});
+https://arena-frontend-ua44.onrender.com/
 // Set Token B
 app.post('/api/config/tokenB', async (req, res) => {
     try {

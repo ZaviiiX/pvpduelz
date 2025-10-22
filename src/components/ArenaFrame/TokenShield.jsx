@@ -41,14 +41,7 @@ export function TokenShield({
                 )}
             </div>
 
-            {isMoving && (
-                <div className={cls(
-                    "absolute -bottom-8 left-1/2 -translate-x-1/2 px-3 py-1 rounded-lg text-xs font-bold",
-                    marketChange > 0 ? "bg-green-500 text-white" : "bg-red-500 text-white"
-                )}>
-                    {marketChange > 0 ? '▲' : '▼'} {Math.abs(marketChange).toFixed(1)}%
-                </div>
-            )}
+
         </div>
     );
 }

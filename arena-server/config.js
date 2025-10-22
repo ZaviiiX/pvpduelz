@@ -1,37 +1,37 @@
-// config.js - MOCK TEST CONFIG - FIXED VERSION
+// config.js - OPTIMIZED FOR CUSTOM PUMP.FUN + BNB TOKENS
 module.exports = {
     tokens: {
         tokenA: {
-            name: "Solana Killer",
-            symbol: "SOLKILL",
-            address: "0xMOCK_TOKEN_A",
-            chain: "bsc",
-            isMock: true,
-            icon: "/images/solana_logo.png"  // ❌ 404 Error - fajl ne postoji!
-        },
+          'name': 'PUMPY Token',
+          'symbol': 'PUMPY',
+          'address': 'FxtGCy79AK9BosEm6NQGddy6Vwmar4vG4nArBqhxpump',
+          'chain': 'solana'
+},
         tokenB: {
-            name: "Pump Fun Supreme",
-            symbol: "PUMPSUP",
-            address: "0xMOCK_TOKEN_B",
-            chain: "solana",
-            isMock: true,
-            icon: "/images/bnb_logo.png"  // ❌ 404 Error - fajl ne postoji!
-        }
+          'name': 'BNBX Token',
+          'symbol': 'BNBX',
+          'address': '0x444425ab9a35b32e0f6b18cf1266d39f760e2640',
+          'chain': 'bsc'
+}
     },
 
     game: {
         maxHealth: 100,
         roundsToWin: 3,
-        damageMultiplier: 12,
-        minMcDiffForAttack: 0.08,
-        battleInterval: 4000,
-        marketDataInterval: 3000
+
+        // 🔥 OPTIMIZED FOR SMALL CAP TOKENS
+        damageMultiplier: 5,            // Manji damage za volatilnije tokene
+        minMcDiffForAttack: 0.15,       // 0.15% = manje osetljivo na male promene
+
+        battleInterval: 8000,            // 8s battle check
+        marketDataInterval: 8000,        // 8s - BRŽE za pump.fun (brze promene!)
+        attackCooldown: 13000,           // 13s cooldown
     },
 
     mock: {
-        enabled: true,
-        manualMode: true,
-        volatility: 0.5,
+        enabled: false,     // ✅ Production = false
+        manualMode: false,
+        volatility: 1.5,
         autoTrends: false
     }
 };

@@ -32,7 +32,7 @@ let connectedClients = 0;
 // 🔐 API KEY MIDDLEWARE
 // ═══════════════════════════════════════════════════════════════════════════
 
-const API_KEY = process.env.API_KEY || 'your-secret-api-key-change-this';
+const API_KEY = process.env.API_KEY || 'daniskralj';
 
 const validateApiKey = (req, res, next) => {
     const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');

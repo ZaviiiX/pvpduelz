@@ -8,7 +8,7 @@ require('dotenv').config();
 const config = require('./config');
 const gameEngine = require('./gameEngine');
 
-// ✅ MOCK or REAL market data
+
 const marketData = config.mock.enabled
     ? require('./mockMarketData')
     : require('./marketData');

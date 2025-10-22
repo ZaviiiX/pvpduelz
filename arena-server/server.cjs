@@ -1,4 +1,4 @@
-// server.cjs - WITH API KEY PROTECTED MOCK ENDPOINTS
+// server.cjs - WITHOUT API KEY (Public endpoints)
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -358,7 +358,7 @@ if (config.mock.enabled) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // SET BOTH TOKENS AT ONCE (Works in live mode!)
-app.post('/api/set-tokens', requireApiKey, (req, res) => {
+app.post('/api/set-tokens', (req, res) => {
     const { tokenA, tokenB } = req.body;
     
     if (!tokenA || !tokenB) {
@@ -403,7 +403,7 @@ app.post('/api/set-tokens', requireApiKey, (req, res) => {
 });
 
 // SET SINGLE TOKEN (Works in live mode!)
-app.post('/api/set-token/:token', requireApiKey, (req, res) => {
+app.post('/api/set-token/:token', (req, res) => {
     const token = req.params.token;
     const { address, symbol, name, chain } = req.body;
     
@@ -506,11 +506,11 @@ app.get('/', (req, res) => {
             public: [
                 'GET /',
                 'GET /health',
-                'GET /status'
+                'GET /status',
+                'POST /api/set-tokens',
+                'POST /api/set-token/:token'
             ],
             protected: [
-                'POST /api/set-tokens',
-                'POST /api/set-token/:token',
                 ...(config.mock.enabled ? [
                     'POST /mock/pump/:token',
                     'POST /mock/dump/:token',

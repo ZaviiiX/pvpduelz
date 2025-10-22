@@ -1,4 +1,4 @@
-// server.cjs - COMPLETE FIXED VERSION
+// server.cjs - COMPLETE VERSION WITH API KEY AUTHENTICATION
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -29,6 +29,32 @@ const PORT = process.env.PORT || 3001;
 let connectedClients = 0;
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔐 API KEY MIDDLEWARE
+// ═══════════════════════════════════════════════════════════════════════════
+
+const API_KEY = process.env.API_KEY || 'your-secret-api-key-change-this';
+
+const validateApiKey = (req, res, next) => {
+    const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+
+    if (!apiKey) {
+        return res.status(401).json({
+            success: false,
+            error: 'API key is required'
+        });
+    }
+
+    if (apiKey !== API_KEY) {
+        return res.status(403).json({
+            success: false,
+            error: 'Invalid API key'
+        });
+    }
+
+    next();
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 🔄 MARKET DATA FETCHING
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -38,10 +64,6 @@ async function fetchMarketDataLoop() {
         gameEngine.updateMarketData(data);
     }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ⚔️ BATTLE PROCESSING - FIXED WITH EMIT CALLBACK
-// ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ⚔️ BATTLE PROCESSING - COMPLETE WITH ALL EVENT TYPES
@@ -69,55 +91,51 @@ function processBattleLoop() {
                 health: data.health
             });
         }
-        // 🆕 GAME OVER EVENT
+        // DAMAGE EVENT
+        else if (data.type === 'damage') {
+            console.log(`💥 Emitting damage: ${data.attacker} → ${data.defender} (${data.damage.toFixed(1)} HP)`);
+            io.emit('damage', {
+                attacker: data.attacker,
+                defender: data.defender,
+                damage: data.damage,
+                health: data.health,
+                combo: data.combo,
+                scenario: data.scenario,
+                attackReason: data.attackReason
+            });
+        }
+        // GAME OVER EVENT
         else if (data.type === 'game_over') {
-            console.log('📡 Emitting game_over event to all clients');
+            console.log(`🏁 Game Over! Winner: ${config.tokens[data.winner].symbol}`);
             io.emit('game_over', {
                 winner: data.winner,
                 score: data.score,
-                isGameOver: true
+                health: data.health
             });
         }
-        // 🆕 GAME RESET EVENT
-        else if (data.type === 'game_reset') {
-            console.log('📡 Emitting game_reset event to all clients');
-            io.emit('game_reset', {
-                currentRound: data.currentRound,
-                health: data.health,
-                score: data.score,
+        // SCENARIO CHANGE
+        else if (data.type === 'scenario_change') {
+            io.emit('scenario_change', {
                 scenario: data.scenario
             });
         }
     };
 
-    // Pass callback to processBattle
-    const battleResult = gameEngine.processBattle(emitCallback);
+    // Execute battle
+    const result = gameEngine.processBattle(emitCallback);
 
-    if (battleResult && battleResult.type === 'battle') {
-        const state = gameEngine.getState();
-        const marketCache = marketData.getCache();
-
-        io.emit('battle_update', {
-            ...battleResult,
-            lastDamage: state.lastDamage,
-            isGameOver: state.isGameOver,
-            winner: state.winner,
-            marketData: {
-                tokenA: {
-                    price: marketCache.tokenA.price,
-                    change24h: marketCache.tokenA.priceChange24h,
-                    marketCap: marketCache.tokenA.marketCap,
-                    volume24h: marketCache.tokenA.volume24h
-                },
-                tokenB: {
-                    price: marketCache.tokenB.price,
-                    change24h: marketCache.tokenB.priceChange24h,
-                    marketCap: marketCache.tokenB.marketCap,
-                    volume24h: marketCache.tokenB.volume24h
-                }
-            }
+    // Emit market update if we have data
+    const marketCache = marketData.getCache();
+    if (marketCache) {
+        io.emit('market_update', {
+            tokenA: marketCache.tokenA,
+            tokenB: marketCache.tokenB
         });
-    } else if (battleResult && battleResult.type === 'idle') {
+    }
+
+    // Reset to idle if no battle activity
+    if (!result && gameEngine.state.currentScenario !== 'idle') {
+        gameEngine.state.currentScenario = 'idle';
         io.emit('scenario_change', { scenario: 'idle' });
     }
 }
@@ -358,11 +376,11 @@ app.get('/api/market/details', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔧 TOKEN CONFIGURATION ENDPOINTS
+// 🔧 TOKEN CONFIGURATION ENDPOINTS (WITH API KEY PROTECTION)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Set Token A
-app.post('/api/config/tokenA', async (req, res) => {
+// Set Token A (protected with API key)
+app.post('/api/config/tokenA', validateApiKey, async (req, res) => {
     try {
         const { address, name, symbol, chain } = req.body;
 
@@ -405,8 +423,8 @@ app.post('/api/config/tokenA', async (req, res) => {
     }
 });
 
-// Set Token B
-app.post('/api/config/tokenB', async (req, res) => {
+// Set Token B (protected with API key)
+app.post('/api/config/tokenB', validateApiKey, async (req, res) => {
     try {
         const { address, name, symbol, chain } = req.body;
 
@@ -449,8 +467,8 @@ app.post('/api/config/tokenB', async (req, res) => {
     }
 });
 
-// Set both tokens at once
-app.post('/api/config/tokens', async (req, res) => {
+// Set both tokens at once (protected with API key)
+app.post('/api/config/tokens', validateApiKey, async (req, res) => {
     try {
         const { tokenA, tokenB } = req.body;
 
@@ -506,8 +524,8 @@ app.post('/api/config/tokens', async (req, res) => {
     }
 });
 
-// Toggle between mock and live mode
-app.post('/api/config/mode', (req, res) => {
+// Toggle between mock and live mode (protected with API key)
+app.post('/api/config/mode', validateApiKey, (req, res) => {
     try {
         const { mode } = req.body;
 
@@ -542,8 +560,8 @@ app.post('/api/config/mode', (req, res) => {
     }
 });
 
-// Admin reset endpoint
-app.post('/admin/reset', (req, res) => {
+// Admin reset endpoint (protected with API key)
+app.post('/admin/reset', validateApiKey, (req, res) => {
     gameEngine.resetGame();
     if (config.mock.enabled) {
         marketData.reset();
@@ -557,11 +575,11 @@ app.post('/admin/reset', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🎮 MOCK CONTROL ENDPOINTS (HTTP API)
+// 🎮 MOCK CONTROL ENDPOINTS (HTTP API) - Protected with API key
 // ═══════════════════════════════════════════════════════════════════════════
 
 if (config.mock.enabled) {
-    app.post('/mock/pump/:token', (req, res) => {
+    app.post('/mock/pump/:token', validateApiKey, (req, res) => {
         const token = req.params.token;
         const intensity = req.body.intensity || 1;
         marketData.forcePump(token, intensity);
@@ -569,7 +587,7 @@ if (config.mock.enabled) {
         res.json({ success: true, token, action: 'pump' });
     });
 
-    app.post('/mock/dump/:token', (req, res) => {
+    app.post('/mock/dump/:token', validateApiKey, (req, res) => {
         const token = req.params.token;
         const intensity = req.body.intensity || 1;
         marketData.forceDump(token, intensity);
@@ -577,20 +595,20 @@ if (config.mock.enabled) {
         res.json({ success: true, token, action: 'dump' });
     });
 
-    app.post('/mock/trend/:token', (req, res) => {
+    app.post('/mock/trend/:token', validateApiKey, (req, res) => {
         const token = req.params.token;
         const trend = req.body.trend;
         marketData.setTrend(token, trend);
         res.json({ success: true, token, trend });
     });
 
-    app.post('/mock/volatility', (req, res) => {
+    app.post('/mock/volatility', validateApiKey, (req, res) => {
         const value = parseFloat(req.body.value);
         marketData.setVolatility(value);
         res.json({ success: true, volatility: value });
     });
 
-    app.post('/mock/reset', (req, res) => {
+    app.post('/mock/reset', validateApiKey, (req, res) => {
         marketData.reset();
         io.emit('market_manual_update', marketData.getCache());
         res.json({ success: true, message: 'Mock data reset' });
@@ -612,9 +630,10 @@ server.listen(PORT, () => {
     console.log(`\n🎮 Best of ${config.game.roundsToWin * 2 - 1} rounds`);
     console.log(`📊 Status: http://localhost:${PORT}/status`);
     console.log(`💚 Health: http://localhost:${PORT}/health`);
+    console.log(`🔐 API Key: ${API_KEY === 'your-secret-api-key-change-this' ? '⚠️  DEFAULT (CHANGE IN .env!)' : '✅ Configured'}`);
 
     if (config.mock.enabled) {
-        console.log(`\n🎮 MOCK CONTROLS (HTTP):`);
+        console.log(`\n🎮 MOCK CONTROLS (HTTP with API Key):`);
         console.log(`   POST /mock/pump/tokenA - Force pump Token A`);
         console.log(`   POST /mock/dump/tokenB - Force dump Token B`);
         console.log(`   POST /mock/trend/tokenA {"trend":"pumping"}`);

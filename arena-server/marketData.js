@@ -1,90 +1,181 @@
-// marketData.js - FIXED VERSION WITH PROPER CACHING
+// marketData.js - OPTIMIZED FOR CUSTOM SMALL CAP TOKENS (Pump.fun + BNB)
 const config = require('./config');
 
 class MarketDataService {
     constructor() {
-        // 🆕 Cache with default values (not 0!)
+        // 🔥 CUSTOM TOKEN DEFAULTS (smaller market caps)
         this.cache = {
             tokenA: {
-                marketCap: config.tokens.tokenA.symbol === 'SOL' ? 90_000_000_000 : 5_000_000,
-                price: config.tokens.tokenA.symbol === 'SOL' ? 150 : 0.05,
+                marketCap: 100_000,      // 100K default za novi pump.fun token
+                price: 0.0001,
                 priceChange24h: 0,
-                volume24h: 0,
+                volume24h: 10_000,
                 lastUpdate: Date.now(),
                 source: 'initial'
             },
             tokenB: {
-                marketCap: config.tokens.tokenB.symbol === 'BNB' ? 85_000_000_000 : 8_000_000,
-                price: config.tokens.tokenB.symbol === 'BNB' ? 550 : 0.08,
+                marketCap: 100_000,      // 100K default za custom BNB token
+                price: 0.0001,
                 priceChange24h: 0,
-                volume24h: 0,
+                volume24h: 10_000,
                 lastUpdate: Date.now(),
                 source: 'initial'
             }
         };
 
-        this.baseMC = {
-            SOL: 90_000_000_000,
-            BNB: 85_000_000_000,
-            ETH: 400_000_000_000,
-            USDT: 120_000_000_000
+        // Backup last valid data
+        this.lastValidData = {
+            tokenA: null,
+            tokenB: null
         };
 
-        // 🆕 Rate limiting tracking
+        // 🔥 Rate limiting (aggressive for Pump.fun)
         this.lastApiCall = {
             pumpfun: 0,
-            jupiter: 0,
-            coingecko: 0,
             dexscreener: 0
         };
 
         this.rateLimits = {
-            pumpfun: 1000,      // 1s between calls
-            jupiter: 600,       // 600ms
-            coingecko: 1500,    // 1.5s (safer for free tier)
-            dexscreener: 500    // 500ms
+            pumpfun: 800,        // 800ms between calls (fast updates!)
+            dexscreener: 500     // 500ms
         };
 
-        // 🆕 Failure tracking for exponential backoff
+        // Failure tracking
         this.failureCount = {
             tokenA: 0,
             tokenB: 0
         };
+        this.consecutiveFailures = 0;
 
-        // 🆕 Cache age tracking
-        this.maxCacheAge = 60000; // 60s - after this, force new fetch even on error
+        // 🔥 SHORTER cache age for volatile tokens
+        this.maxCacheAge = 30000;  // 30s (instead of 2 min) - custom tokens change fast!
+        this.maxStaleAge = 120000; // 2 min max stale
+
+        console.log('🎯 Market Data Service initialized for CUSTOM TOKENS');
+        console.log(`   Token A (${config.tokens.tokenA.symbol}): Pump.fun`);
+        console.log(`   Token B (${config.tokens.tokenB.symbol}): BNB Chain`);
+        console.log(`   Cache duration: ${this.maxCacheAge/1000}s (fast refresh)`);
     }
 
-    // 🆕 RATE LIMIT CHECK
-    canCallApi(apiName) {
-        const now = Date.now();
-        const timeSinceLastCall = now - this.lastApiCall[apiName];
+    // 🔥 VALIDATE DATA (for small cap tokens)
+    isValidData(data) {
+        if (!data) {
+            console.warn('⚠️ Data is null/undefined');
+            return false;
+        }
 
-        if (timeSinceLastCall < this.rateLimits[apiName]) {
-            const waitTime = this.rateLimits[apiName] - timeSinceLastCall;
-            console.log(`⏳ Rate limit: ${apiName} needs ${waitTime}ms wait`);
+        // Allow small market caps (even $100)
+        if (!data.marketCap || data.marketCap < 0 || isNaN(data.marketCap)) {
+            console.warn('⚠️ Invalid marketCap:', data.marketCap);
+            return false;
+        }
+
+        // Allow very small prices
+        if (data.price === undefined || data.price === null || data.price < 0 || isNaN(data.price)) {
+            console.warn('⚠️ Invalid price:', data.price);
+            return false;
+        }
+
+        // Check for unrealistic values (but higher limit since small caps can be volatile)
+        if (data.marketCap > 1e12) { // > 1 trillion (probably error)
+            console.warn('⚠️ MarketCap too high:', data.marketCap);
             return false;
         }
 
         return true;
     }
 
-    // 🆕 UPDATE API CALL TIMESTAMP
+    // 🔥 SAFE UPDATE
+    safeUpdate(tokenKey, newData) {
+        if (!this.isValidData(newData)) {
+            console.warn(`⚠️ Invalid data for ${tokenKey}, keeping current values`);
+            return false;
+        }
+
+        // Save as last valid data
+        this.lastValidData[tokenKey] = {
+            ...newData,
+            timestamp: Date.now()
+        };
+
+        // Update cache
+        this.cache[tokenKey] = {
+            ...newData,
+            lastUpdate: Date.now()
+        };
+
+        // Reset failure count on success
+        this.failureCount[tokenKey] = 0;
+        this.consecutiveFailures = 0;
+
+        return true;
+    }
+
+    // 🔥 GET FALLBACK DATA
+    getFallbackData(tokenKey, symbol) {
+        // 1. Try last valid data
+        if (this.lastValidData[tokenKey]) {
+            const age = Date.now() - this.lastValidData[tokenKey].timestamp;
+            console.warn(`📦 Using cached data for ${symbol} (age: ${(age/1000).toFixed(0)}s)`);
+            return {
+                ...this.lastValidData[tokenKey],
+                source: this.lastValidData[tokenKey].source + '+cached'
+            };
+        }
+
+        // 2. Use current cache
+        if (this.cache[tokenKey] && this.cache[tokenKey].marketCap >= 0) {
+            const age = Date.now() - this.cache[tokenKey].lastUpdate;
+            console.warn(`📦 Using stale cache for ${symbol} (age: ${(age/1000).toFixed(0)}s)`);
+            return {
+                ...this.cache[tokenKey],
+                source: this.cache[tokenKey].source + '+stale'
+            };
+        }
+
+        // 3. Return minimal default
+        console.warn(`⚠️ Using minimal default for ${symbol}`);
+        return {
+            marketCap: 100_000,
+            price: 0.0001,
+            priceChange24h: 0,
+            volume24h: 10_000,
+            source: 'default'
+        };
+    }
+
+    // 🔥 RATE LIMIT CHECK
+    canCallApi(apiName) {
+        const now = Date.now();
+        const timeSinceLastCall = now - this.lastApiCall[apiName];
+
+        if (timeSinceLastCall < this.rateLimits[apiName]) {
+            return false;
+        }
+
+        return true;
+    }
+
     updateApiCallTime(apiName) {
         this.lastApiCall[apiName] = Date.now();
     }
 
-    // ⚡ PUMP.FUN V3 API
+    // ⚡ PUMP.FUN V3 API (MAIN SOURCE)
     async fetchFromPumpFun(tokenMint) {
         if (!this.canCallApi('pumpfun')) return null;
 
         try {
-            console.log(`🚀 Fetching from Pump.fun v3: ${tokenMint.slice(0, 8)}...`);
             this.updateApiCallTime('pumpfun');
 
             const response = await fetch(
                 `https://frontend-api-v3.pump.fun/coins/${tokenMint}`,
-                { timeout: 5000 }
+                {
+                    timeout: 5000,
+                    headers: {
+                        'Accept': 'application/json',
+                        'User-Agent': 'Mozilla/5.0'
+                    }
+                }
             );
 
             if (!response.ok) {
@@ -95,17 +186,12 @@ class MarketDataService {
 
             if (data) {
                 const marketCap = parseFloat(data.usd_market_cap) || 0;
-                const price = marketCap > 0 && data.total_supply
-                    ? marketCap / parseFloat(data.total_supply)
-                    : 0;
+                const totalSupply = parseFloat(data.total_supply) || 1;
+                const price = marketCap > 0 ? marketCap / totalSupply : 0;
                 const volume24h = parseFloat(data.volume_24h) || 0;
-                let priceChange24h = 0;
+                const priceChange24h = parseFloat(data.price_change_percentage_24h) || 0;
 
-                if (data.price_change_percentage_24h) {
-                    priceChange24h = parseFloat(data.price_change_percentage_24h);
-                }
-
-                console.log(`✅ Pump.fun v3: MC=$${(marketCap/1e6).toFixed(2)}M`);
+                console.log(`✅ Pump.fun: MC=$${this.formatMC(marketCap)}, Price=$${price.toFixed(8)}`);
 
                 return {
                     price,
@@ -118,79 +204,26 @@ class MarketDataService {
 
             return null;
         } catch (error) {
-            console.log(`⚠️ Pump.fun v3 error: ${error.message}`);
+            console.log(`⚠️ Pump.fun error: ${error.message}`);
             return null;
         }
     }
 
-    // ⚡ JUPITER API
-    async fetchFromJupiter(symbol = 'SOL') {
-        if (!this.canCallApi('jupiter')) return null;
-
-        try {
-            console.log(`⚡ Fetching from Jupiter: ${symbol}...`);
-            this.updateApiCallTime('jupiter');
-
-            const response = await fetch(
-                `https://price.jup.ag/v4/price?ids=${symbol}`,
-                { timeout: 5000 }
-            );
-            const data = await response.json();
-
-            const price = data.data?.[symbol]?.price;
-            if (price) {
-                console.log(`✅ Jupiter: ${symbol} = $${price.toFixed(2)}`);
-                return { price, source: 'jupiter' };
-            }
-            return null;
-        } catch (error) {
-            console.log(`⚠️ Jupiter error: ${error.message}`);
-            return null;
-        }
-    }
-
-    // ⚡ COINGECKO
-    async fetchFromCoinGecko(coinId) {
-        if (!this.canCallApi('coingecko')) return null;
-
-        try {
-            console.log(`🦎 Fetching from CoinGecko: ${coinId}...`);
-            this.updateApiCallTime('coingecko');
-
-            const response = await fetch(
-                `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true`,
-                { timeout: 5000 }
-            );
-            const data = await response.json();
-
-            if (data[coinId]) {
-                console.log(`✅ CoinGecko: ${coinId} = $${data[coinId].usd.toFixed(2)}`);
-                return {
-                    price: data[coinId].usd,
-                    priceChange24h: data[coinId].usd_24h_change || 0,
-                    marketCap: data[coinId].usd_market_cap || 0,
-                    volume24h: data[coinId].usd_24h_vol || 0,
-                    source: 'coingecko'
-                };
-            }
-            return null;
-        } catch (error) {
-            console.log(`⚠️ CoinGecko error: ${error.message}`);
-            return null;
-        }
-    }
-
-    // ⚡ DEXSCREENER
+    // ⚡ DEXSCREENER (FALLBACK FOR BOTH CHAINS)
     async fetchFromDexScreener(tokenAddress, chain) {
         if (!this.canCallApi('dexscreener')) return null;
 
         try {
-            console.log(`🔍 Fetching from DexScreener: ${tokenAddress.slice(0, 8)}...`);
             this.updateApiCallTime('dexscreener');
 
             const response = await fetch(
                 `https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`,
-                { timeout: 5000 }
+                {
+                    timeout: 5000,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                }
             );
 
             if (!response.ok) return null;
@@ -198,12 +231,14 @@ class MarketDataService {
             const data = await response.json();
 
             if (data.pairs && data.pairs.length > 0) {
+                // Filter by chain
                 let chainPairs = data.pairs.filter(pair => {
                     if (chain === 'solana') return pair.chainId === 'solana';
                     if (chain === 'bsc') return pair.chainId === 'bsc';
                     return true;
                 });
 
+                // Sort by liquidity
                 chainPairs.sort((a, b) => {
                     const liqA = parseFloat(a.liquidity?.usd || 0);
                     const liqB = parseFloat(b.liquidity?.usd || 0);
@@ -211,30 +246,28 @@ class MarketDataService {
                 });
 
                 const pair = chainPairs[0] || data.pairs[0];
+
                 let marketCap = parseFloat(pair.fdv) || parseFloat(pair.marketCap) || 0;
                 const price = parseFloat(pair.priceUsd) || 0;
-                const liquidity = parseFloat(pair.liquidity?.usd) || 0;
+                const priceChange24h = parseFloat(pair.priceChange?.h24) || 0;
+                const volume24h = parseFloat(pair.volume?.h24) || 0;
 
-                if (marketCap === 0 && liquidity > 0) {
-                    marketCap = liquidity * 800;
-                    console.log(`⚠️ Using liquidity approximation: $${(marketCap/1e6).toFixed(2)}M`);
-                }
-
+                // Estimate MC from liquidity if needed
                 if (marketCap === 0) {
-                    if (chain === 'solana' && tokenAddress.includes('So1111')) {
-                        marketCap = this.baseMC.SOL;
-                    } else if (chain === 'bsc' && tokenAddress.includes('bb4CdB')) {
-                        marketCap = this.baseMC.BNB;
+                    const liquidity = parseFloat(pair.liquidity?.usd || 0);
+                    if (liquidity > 0) {
+                        // More conservative estimate for small caps
+                        marketCap = liquidity * 200;
                     }
                 }
 
-                console.log(`✅ DexScreener: MC=$${this.formatMC(marketCap)}`);
+                console.log(`✅ DexScreener: MC=$${this.formatMC(marketCap)}, Price=$${price.toFixed(8)}`);
 
                 return {
                     price,
-                    priceChange24h: parseFloat(pair.priceChange?.h24) || 0,
+                    priceChange24h,
                     marketCap,
-                    volume24h: parseFloat(pair.volume?.h24) || 0,
+                    volume24h,
                     source: 'dexscreener'
                 };
             }
@@ -246,109 +279,57 @@ class MarketDataService {
         }
     }
 
-    // 🎯 SMART FETCH WITH BETTER CACHING
+    // 🔥 SMART FETCH FOR CUSTOM TOKENS
     async fetchTokenData(tokenAddress, chain, symbol, tokenKey) {
+        console.log(`\n🔍 Fetching ${symbol} (${chain})...`);
+
         let data = null;
 
-        console.log(`\n🔍 Fetching data for ${symbol}...`);
-
-        // 🆕 Check if cache is still fresh
+        // Check cache age
         const cacheAge = Date.now() - this.cache[tokenKey].lastUpdate;
         const isCacheFresh = cacheAge < this.maxCacheAge;
 
-        // PRIORITY 1: Pump.fun v3
-        if (chain === 'solana' && !tokenAddress.includes('So1111')) {
+        // If cache is fresh and we're having issues, use it
+        if (isCacheFresh && this.consecutiveFailures > 2) {
+            console.log(`📦 Using fresh cache (age: ${(cacheAge/1000).toFixed(0)}s)`);
+            return this.cache[tokenKey];
+        }
+
+        // PRIORITY 1: Pump.fun for Solana tokens
+        if (chain === 'solana') {
             data = await this.fetchFromPumpFun(tokenAddress);
-            if (data && data.marketCap > 0) {
-                console.log(`✅ Using Pump.fun data for ${symbol}`);
-                this.failureCount[tokenKey] = 0; // Reset failure count
+
+            if (this.isValidData(data)) {
+                console.log(`✅ ${symbol}: Using Pump.fun data`);
+                this.safeUpdate(tokenKey, data);
                 return data;
             }
         }
 
-        // PRIORITY 2: Jupiter + CoinGecko for SOL
-        if (symbol === 'SOL' || tokenAddress.includes('So1111')) {
-            const jupData = await this.fetchFromJupiter('SOL');
-            const cgData = await this.fetchFromCoinGecko('solana');
-
-            if (jupData && cgData) {
-                console.log(`✅ Using Jupiter+CoinGecko combo for SOL`);
-                this.failureCount[tokenKey] = 0;
-                return {
-                    price: jupData.price,
-                    priceChange24h: cgData.priceChange24h,
-                    marketCap: cgData.marketCap,
-                    volume24h: cgData.volume24h,
-                    source: 'jupiter+coingecko'
-                };
-            } else if (cgData) {
-                console.log(`✅ Using CoinGecko only for SOL`);
-                this.failureCount[tokenKey] = 0;
-                return cgData;
-            } else if (jupData) {
-                // Use Jupiter price + cached MC
-                console.log(`⚠️ Using Jupiter + cached MC for SOL`);
-                return {
-                    price: jupData.price,
-                    priceChange24h: this.cache[tokenKey].priceChange24h,
-                    marketCap: this.cache[tokenKey].marketCap || this.baseMC.SOL,
-                    volume24h: this.cache[tokenKey].volume24h,
-                    source: 'jupiter+cache'
-                };
-            }
-        }
-
-        // PRIORITY 3: CoinGecko for BNB
-        if (symbol === 'BNB' || tokenAddress.includes('bb4CdB')) {
-            const cgData = await this.fetchFromCoinGecko('binancecoin');
-            if (cgData) {
-                console.log(`✅ Using CoinGecko for BNB`);
-                this.failureCount[tokenKey] = 0;
-                return cgData;
-            }
-        }
-
-        // PRIORITY 4: DexScreener (fallback)
+        // PRIORITY 2: DexScreener (works for both chains)
         data = await this.fetchFromDexScreener(tokenAddress, chain);
-        if (data && data.marketCap > 0) {
-            console.log(`✅ Using DexScreener for ${symbol}`);
-            this.failureCount[tokenKey] = 0;
+
+        if (this.isValidData(data)) {
+            console.log(`✅ ${symbol}: Using DexScreener data`);
+            this.safeUpdate(tokenKey, data);
             return data;
         }
 
-        // 🆕 CRITICAL FIX: Return cached data if available and not too old
+        // FALLBACK: Use cached data
+        console.warn(`❌ All sources failed for ${symbol}`);
         this.failureCount[tokenKey]++;
+        this.consecutiveFailures++;
 
-        if (isCacheFresh) {
-            console.warn(`⚠️ All sources failed for ${symbol}, using cached data (age: ${(cacheAge/1000).toFixed(0)}s)`);
-            return {
-                ...this.cache[tokenKey],
-                source: this.cache[tokenKey].source + '+cached'
-            };
-        } else {
-            console.error(`❌ All sources failed for ${symbol} and cache is stale (age: ${(cacheAge/1000).toFixed(0)}s)`);
-            console.error(`   Failure count: ${this.failureCount[tokenKey]}`);
-
-            // 🆕 Even if cache is stale, return it if we have no other option
-            if (this.cache[tokenKey].marketCap > 0) {
-                console.warn(`   Using STALE cache as last resort`);
-                return {
-                    ...this.cache[tokenKey],
-                    source: this.cache[tokenKey].source + '+stale'
-                };
-            }
-
-            return null;
-        }
+        return this.getFallbackData(tokenKey, symbol);
     }
 
-    // 🚀 MAIN FETCH METHOD
+    // 🔥 MAIN FETCH METHOD
     async fetchMarketData() {
         console.log('\n⚡ ═══════════════════════════════════════════');
-        console.log('⚡ FETCHING MARKET DATA (CACHED & SAFE)');
+        console.log('⚡ FETCHING CUSTOM TOKEN DATA');
         console.log('⚡ ═══════════════════════════════════════════');
 
-        // TOKEN A
+        // Fetch both tokens
         const tokenAData = await this.fetchTokenData(
             config.tokens.tokenA.address,
             config.tokens.tokenA.chain,
@@ -356,14 +337,6 @@ class MarketDataService {
             'tokenA'
         );
 
-        if (tokenAData) {
-            this.cache.tokenA = {
-                ...tokenAData,
-                lastUpdate: Date.now()
-            };
-        }
-
-        // TOKEN B
         const tokenBData = await this.fetchTokenData(
             config.tokens.tokenB.address,
             config.tokens.tokenB.chain,
@@ -371,30 +344,26 @@ class MarketDataService {
             'tokenB'
         );
 
-        if (tokenBData) {
-            this.cache.tokenB = {
-                ...tokenBData,
-                lastUpdate: Date.now()
-            };
-        }
-
         // Log results
         console.log('\n📊 ═══════════════════════════════════════════');
         console.log('📊 MARKET UPDATE COMPLETE');
         console.log('📊 ═══════════════════════════════════════════');
         console.log(`  ${config.tokens.tokenA.symbol}:`);
         console.log(`    MC: $${this.formatMC(this.cache.tokenA.marketCap)}`);
-        console.log(`    Price: $${this.cache.tokenA.price.toFixed(6)}`);
+        console.log(`    Price: $${this.cache.tokenA.price.toFixed(8)}`);
         console.log(`    24h: ${this.cache.tokenA.priceChange24h >= 0 ? '+' : ''}${this.cache.tokenA.priceChange24h.toFixed(2)}%`);
+        console.log(`    Vol: $${this.formatMC(this.cache.tokenA.volume24h)}`);
         console.log(`    Source: ${this.cache.tokenA.source}`);
-        console.log(`    Cache age: ${((Date.now() - this.cache.tokenA.lastUpdate)/1000).toFixed(0)}s`);
+        console.log(`    Age: ${((Date.now() - this.cache.tokenA.lastUpdate)/1000).toFixed(0)}s`);
 
         console.log(`  ${config.tokens.tokenB.symbol}:`);
         console.log(`    MC: $${this.formatMC(this.cache.tokenB.marketCap)}`);
-        console.log(`    Price: $${this.cache.tokenB.price.toFixed(6)}`);
+        console.log(`    Price: $${this.cache.tokenB.price.toFixed(8)}`);
         console.log(`    24h: ${this.cache.tokenB.priceChange24h >= 0 ? '+' : ''}${this.cache.tokenB.priceChange24h.toFixed(2)}%`);
+        console.log(`    Vol: $${this.formatMC(this.cache.tokenB.volume24h)}`);
         console.log(`    Source: ${this.cache.tokenB.source}`);
-        console.log(`    Cache age: ${((Date.now() - this.cache.tokenB.lastUpdate)/1000).toFixed(0)}s`);
+        console.log(`    Age: ${((Date.now() - this.cache.tokenB.lastUpdate)/1000).toFixed(0)}s`);
+        console.log(`  Failures: ${this.consecutiveFailures}`);
         console.log('═══════════════════════════════════════════\n');
 
         return {
@@ -417,21 +386,25 @@ class MarketDataService {
     reset() {
         this.cache = {
             tokenA: {
-                marketCap: 0,
-                price: 0,
+                marketCap: 100_000,
+                price: 0.0001,
                 priceChange24h: 0,
-                volume24h: 0,
-                lastUpdate: Date.now()
+                volume24h: 10_000,
+                lastUpdate: Date.now(),
+                source: 'initial'
             },
             tokenB: {
-                marketCap: 0,
-                price: 0,
+                marketCap: 100_000,
+                price: 0.0001,
                 priceChange24h: 0,
-                volume24h: 0,
-                lastUpdate: Date.now()
+                volume24h: 10_000,
+                lastUpdate: Date.now(),
+                source: 'initial'
             }
         };
+        this.lastValidData = { tokenA: null, tokenB: null };
         this.failureCount = { tokenA: 0, tokenB: 0 };
+        this.consecutiveFailures = 0;
         console.log('🔄 Market data cache reset');
     }
 }

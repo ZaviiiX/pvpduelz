@@ -1,10 +1,10 @@
-// ArenaFrame.jsx - COMPLETE WITH ROUND VICTORY
+// ArenaFrame.jsx - COMPLETE WITH ROUND VICTORY AND DEBUG PANEL
 import React, { useEffect } from 'react';
 import { usePortal, useWebSocket, useVideoPlayer } from './hooks';
 import { PortalScreen } from './PortalScreen';
 import { MockControls } from './MockControls';
 import { GameOverlay } from './GameOverlay';
-import RoundVictory from './RoundVictory'; // 🆕 IMPORT
+import RoundVictory from './RoundVictory';
 import { StatusIndicator } from './StatusIndicator';
 import { VideoPlayer } from './VideoPlayer';
 import  HealthBar  from './HealthBar';
@@ -15,6 +15,7 @@ import { StatsPanel } from './StatsPanel';
 import { ScreenFlash } from './ScreenFlash';
 import { DamagePopup } from './DamagePopup';
 import AttackReason from './AttackReason';
+import { DebugPanel } from './DebugPanel'; // 🆕 ADD THIS IMPORT
 import { cls, getTokenStatus, shouldShakeScreen } from './utils';
 import { DEFAULT_CONFIG } from './constants';
 import './ArenaFrame.css';
@@ -179,6 +180,21 @@ export default function ArenaFrame(props) {
             {ws.gameOver && (
                 <GameOverlay winner={ws.gameOver} tokenConfig={ws.tokenConfig} score={ws.score} />
             )}
+
+            {/* 🐛 DEBUG PANEL - ADD HERE AT THE END */}
+            <DebugPanel
+                isConnected={ws.isConnected}
+                userCount={ws.userCount}
+                marketData={ws.marketData}
+                health={ws.health}
+                round={ws.round}
+                score={ws.score}
+                serverUrl={serverUrl}
+                socketRef={ws.socketRef}
+                connectionAttempts={ws.connectionAttempts}
+                lastError={ws.lastError}
+                connectionHistory={ws.connectionHistory}
+            />
         </section>
     );
 }

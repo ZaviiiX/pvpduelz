@@ -1,38 +1,31 @@
-// config.js - OPTIMIZED FOR PRODUCTION WITH RATE LIMITING
+// config.js - OPTIMIZED FOR CUSTOM PUMP.FUN + BNB TOKENS
 module.exports = {
     tokens: {
         tokenA: {
-            name: "Solana",
-            symbol: "SOL",
-            address: "So11111111111111111111111111111111111111112",
-            chain: "solana",
-            isMock: false,
-            icon: "/images/solana_logo.png"
-        },
+          'name': 'PUMPY Token',
+          'symbol': 'PUMPY',
+          'address': 'FxtGCy79AK9BosEm6NQGddy6Vwmar4vG4nArBqhxpump',
+          'chain': 'solana'
+},
         tokenB: {
-            name: "BNB",
-            symbol: "BNB",
-            address: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-            chain: "bsc",
-            isMock: false,
-            icon: "/images/bnb_logo.png"
-        }
+          'name': 'BNBX Token',
+          'symbol': 'BNBX',
+          'address': '0x444425ab9a35b32e0f6b18cf1266d39f760e2640',
+          'chain': 'bsc'
+}
     },
 
     game: {
         maxHealth: 100,
         roundsToWin: 3,
-        damageMultiplier: 8,
-        minMcDiffForAttack: 0.10,      // 0.10% = samo veće promene
-        battleInterval: 8000,           // 8s - battle check frequency
 
-        // 🆕 OPTIMIZED FOR PRODUCTION
-        // Free tier APIs imaju rate limits, pa je bolje da zovemo ređe
-        marketDataInterval: 10000,      // 🔄 10s umjesto 5s (6 poziva/min umjesto 12)
-        // Alternativno možeš koristiti:
-        // marketDataInterval: 15000,   // 15s = 4 poziva/min (ultra safe za free tier)
+        // 🔥 OPTIMIZED FOR SMALL CAP TOKENS
+        damageMultiplier: 5,            // Manji damage za volatilnije tokene
+        minMcDiffForAttack: 0.15,       // 0.15% = manje osetljivo na male promene
 
-        attackCooldown: 13000,          // 13s - vrijeme između napada
+        battleInterval: 8000,            // 8s battle check
+        marketDataInterval: 8000,        // 8s - BRŽE za pump.fun (brze promene!)
+        attackCooldown: 13000,           // 13s cooldown
     },
 
     mock: {
